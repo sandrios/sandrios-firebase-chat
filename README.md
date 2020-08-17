@@ -1,8 +1,8 @@
 # Chat Functions
 
-sandrios chat is an open and free chat client that runs on firebase functions and firestore. Just deplot the functions to your existing firebase project and it will manage the chat data according.
+sandrios chat is an open and free chat client that runs on firebase functions and firestore. Just deploy cloud functions using your existing/new firebase project and it will manage the chat data on firestore, functions for updating data and cloud messaging for notifications.
 
-#### Supported Features!
+#### Features
 
   - Push notifications with payloads for easy deepLink
   - Custom HTTP endpoints for custom backend integration
