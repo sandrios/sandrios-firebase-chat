@@ -69,7 +69,7 @@ app.get('/badgeCount', async (req, res) => {
 });
 
 app.post('/createChannel', async (req, res) => {
-    await createChannel(req.body)
+    await createChannel(req.body, req.body.userId)
     res.sendStatus(201);
 });
 
@@ -94,12 +94,11 @@ exports.app = functions.https.onRequest(app);
  * 
  *  @param {string} name Name of the channel
  *  @param {string} type Type of channel ("direct", "group")
- *  @param {string} userId ID of the user creating the channel
  */
 exports.createChannel = functions.https.onCall(async (data, context) => {
     try {
         await validateUser(context)
-        await createChannel(data)
+        await createChannel(data, context.auth.uid)
     } catch (e) {
         console.log(e)
     }
@@ -111,12 +110,11 @@ exports.createChannel = functions.https.onCall(async (data, context) => {
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @param {string} chatId ID of the channel to which user should be added
- *  @param {string} userId ID of the user to be added to channel
  */
 exports.addMember = functions.https.onCall(async (data, context) => {
     try {
         await validateUser(context)
-        await addMemberToChat(data.chatId, data.userId)
+        await addMemberToChat(data.chatId, context.auth.uid)
     } catch (e) {
         console.log(e)
     }
@@ -128,12 +126,11 @@ exports.addMember = functions.https.onCall(async (data, context) => {
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @param {string} chatId ID of the channel from which user should be removed
- *  @param {string} userId ID of the user to be removed from the channel
  */
 exports.removeMember = functions.https.onCall(async (data, context) => {
     try {
         await validateUser(context)
-        await removeMemberFromChat(data.chatId, data.userId)
+        await removeMemberFromChat(data.chatId, context.auth.uid)
     } catch (e) {
         console.log(e)
     }
@@ -142,13 +139,13 @@ exports.removeMember = functions.https.onCall(async (data, context) => {
 
 
 /**
- *  Register User to chat
+ *  Register Device
  *  This will create user entry in the firestore if not present
  *  This will also remove previously added token for other user and add the token to current user
  * 
  *  @param {string} token FCM token to send push notifications
  */
-exports.registerUser = functions.https.onCall(async (data, context) => {
+exports.registerDevice = functions.https.onCall(async (data, context) => {
     return await registerUser(context, data)
 })
 
@@ -221,7 +218,6 @@ exports.setAllMessagesAsRead = functions.https.onCall(async (data, context) => {
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @param {string} chatId ID of the chat channel
- *  @param {string} userId ID of the user
  */
 exports.setTyping = functions.https.onCall(async (data, context) => {
     try {
@@ -276,13 +272,13 @@ async function unregisterToken(userRef, token) {
     })
 }
 
-async function createChannel(data) {
+async function createChannel(data, userId) {
     const chatAddResponse = await Chats.add({
         'name': data.name,
         'type': data.type,
         'createdOn': admin.firestore.FieldValue.serverTimestamp()
     })
-    await addMemberToChat(chatAddResponse.id, data.userId)
+    await addMemberToChat(chatAddResponse.id, userId)
     return
 }
 
@@ -353,6 +349,7 @@ async function getBadgeCount(userId) {
     var totalCount = 0
     const user = await Users.doc(userId).get()
     for (const channelRef of user.data().channels) {
+        /* eslint-disable */
         const members = await channelRef.collection("members").where("user", "==", user.id).get();
         var lastSeenMessage = null
         if (members.docs[0].data().lastSeen) {
@@ -366,6 +363,7 @@ async function getBadgeCount(userId) {
         }
         const chatChannel = await queryRef.get()
         totalCount = totalCount + chatChannel.size
+        /* eslint-enable */
     }
     return totalCount
 }

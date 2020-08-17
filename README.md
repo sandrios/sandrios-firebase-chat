@@ -1,6 +1,6 @@
 # Chat Functions
 
-sandrios chat is a open and free chat client that runs on firebase functions and firestore. Just deplot the functions to your existing firebase project and it will manage the chat data according.
+sandrios chat is an open and free chat client that runs on firebase functions and firestore. Just deplot the functions to your existing firebase project and it will manage the chat data according.
 
 #### Supported Features!
 
@@ -18,16 +18,16 @@ sandrios chat is a open and free chat client that runs on firebase functions and
 
     Client:
     1. Integrate firestore and cloud messaging
-    2. Authticate firebase auth to use the cloud functions and firestore
+    2. Authenticate firebase auth to use the cloud functions and firestore
     3. Refer Docs for client calls. (Client SDKs WIP)
 
 ### Client access docs
 
 Cloud Functions for write access. These functions can only be invoked using the firebase functions client SDK:
 ```
-1. Function: 'registerUser'
+1. Function: 'registerDevice'
 /**
- *  Register User to chat
+ *  Register device
  *  This will create user entry in the firestore if not present
  *  This will also remove previously added token for other user and add the token to current user
  * 
@@ -73,7 +73,6 @@ Cloud Functions for write access. These functions can only be invoked using the 
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @chatId {string} ID of the chat channel
- *  @userId {string} ID of the user
  */
  
  5. Function: 'createChannel'
@@ -83,7 +82,6 @@ Cloud Functions for write access. These functions can only be invoked using the 
  * 
  *  @name {string} Name of the channel
  *  @type {string} Type of channel ("direct", "group")
- *  @userId {string} ID of the user creating the channel
  */
  
  6. Function: 'addMember'
@@ -92,7 +90,6 @@ Cloud Functions for write access. These functions can only be invoked using the 
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @chatId {string} ID of the channel to which user should be added
- *  @userId {string} ID of the user to be added to channel
  */
  
  7. Function: 'removeMember'
@@ -101,7 +98,6 @@ Cloud Functions for write access. These functions can only be invoked using the 
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @chatId {string} ID of the channel from which user should be removed
- *  @userId {string} ID of the user to be removed from the channel
  */
 ```
 
@@ -158,6 +154,7 @@ Database rules are added in the repo, so deploy will also deploy the rules.
 1. To change the notification title, body or clickAction for flutter. Please modify the playload format inside index.js
 2. Remove badge count by commenting out the payload line in index.js
 3. Typing status is not accounted for unless function or firestore query is run on it.
+4. Remove functions createChannel or addMember or removeMember if you want this action to be able to perform only from API.
 
 ### Advantages
 
