@@ -159,10 +159,10 @@ Database rules are added in the repo, so deploy will also deploy the rules.
 
 ### Advantages
 
-1. Free tier of firebase will easily support 50 users per month (based on user activity)
+1. Free tier of firebase should support ~50 MAU (depends on user activity)
 2. Move firebase to spark plan and scale your chat to 5K MAU for ~$1/month
 3. Flexible with cloud functions
-4. Works with most apps because of firebase just out of the box
+4. Works with most apps because of existing firebase integrations 
 
 ... Awaiting feedback
 
