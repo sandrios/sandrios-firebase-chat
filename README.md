@@ -49,6 +49,7 @@ Cloud Functions for write access. These functions can only be invoked using the 
  /**
  *  Send Message
  *  Can only be accessed by only authorized Firebase Users.
+ *  To use media messages, upload the media files to either firebase storage or your backend and then add the URL in content payload with appropriate media type.
  * 
  *  This will send push notifications to every user present in the channel
  * 
