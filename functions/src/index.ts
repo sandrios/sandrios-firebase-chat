@@ -25,24 +25,11 @@ import {
   CollectionReference,
   DocumentReference,
 } from "firebase-admin/firestore";
-import {
-  AuthData,
-} from "firebase-functions/lib/common/providers/https";
 
-
-import {
-  User,
-} from "./types/User";
-import {
-  Member,
-} from "./types/Member";
-import {
-  Channel,
-} from "./types/Channel";
-import {
-  ThreadMessage,
-} from "./types/ThreadMessage";
-
+import {User} from "./types/User";
+import {Member} from "./types/Member";
+import {Channel} from "./types/Channel";
+import {ThreadMessage} from "./types/ThreadMessage";
 
 // This HTTPS endpoint can only be accessed by your Firebase Users.
 // Requests need to be authorized by providing an `Authorization` HTTP header
@@ -62,7 +49,7 @@ const Users = getFirestore().collection("users") as CollectionReference<User>;
  */
 exports.createChannel = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await createChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -79,7 +66,7 @@ exports.createChannel = onCall(async (request) => {
  */
 exports.renameChannel = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await renameChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -96,7 +83,7 @@ exports.renameChannel = onCall(async (request) => {
  */
 exports.deactivateChannel = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await deactivateChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -112,7 +99,7 @@ exports.deactivateChannel = onCall(async (request) => {
  */
 exports.addMember = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await addMemberToChat(request.data.chatId, request.data.user);
   } catch (e) {
     console.log(e);
@@ -129,7 +116,7 @@ exports.addMember = onCall(async (request) => {
  */
 exports.addMembers = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await addMembersToChat(request.data.chatId, request.data.users);
   } catch (e) {
     console.log(e);
@@ -145,7 +132,7 @@ exports.addMembers = onCall(async (request) => {
  */
 exports.removeMember = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await removeMemberFromChat(request.data.chatId, request.data.userId);
   } catch (e) {
     console.log(e);
@@ -162,7 +149,7 @@ exports.removeMember = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.registerDevice = onCall(async (request) => {
-  await validateUser(request.auth);
+  await validateUser(request.auth?.uid);
   return await registerUser(request.data, request.auth?.uid as string);
 });
 
@@ -174,7 +161,7 @@ exports.registerDevice = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.editUser = onCall(async (request) => {
-  await validateUser(request.auth);
+  await validateUser(request.auth?.uid);
   return await editUser(request.data, request.auth?.uid as string);
 });
 
@@ -189,7 +176,7 @@ exports.editUser = onCall(async (request) => {
  */
 exports.unregisterDevice = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await unregisterToken(request.auth?.uid as string, request.data.token);
   } catch (e) {
     console.log(e);
@@ -209,7 +196,7 @@ exports.unregisterDevice = onCall(async (request) => {
  */
 exports.sendMessage = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await sendChannelMessage(request.data, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -232,7 +219,7 @@ exports.sendMessage = onCall(async (request) => {
  */
 exports.sendThreadMessage = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await sendThreadMessage(request.data, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -248,7 +235,7 @@ exports.sendThreadMessage = onCall(async (request) => {
  */
 exports.setAllMessagesAsRead = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await setAllMessagesAsRead(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -265,7 +252,7 @@ exports.setAllMessagesAsRead = onCall(async (request) => {
  */
 exports.setTyping = onCall(async (request) => {
   try {
-    await validateUser(request.auth);
+    await validateUser(request.auth?.uid);
     await setTyping(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -537,8 +524,8 @@ async function updateMemberDocument(chatId: string, userId: string, document: { 
   }
 }
 
-async function validateUser(auth: AuthData | undefined) {
-  if ((typeof auth?.uid === "string" && auth.uid.length === 0)) {
+async function validateUser(authUid: string | undefined) {
+  if ((typeof authUid === "string" && authUid.length === 0)) {
     return;
   }
   throw new HttpsError(

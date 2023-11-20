@@ -2,6 +2,8 @@
 lib/**/*.js
 lib/**/*.js.map
 
+**/package-lock.json
+
 # TypeScript v1 declaration files
 typings/
 
