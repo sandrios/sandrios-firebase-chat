@@ -31,17 +31,17 @@ import {Member} from "./types/Member";
 import {Channel} from "./types/Channel";
 import {ThreadMessage} from "./types/ThreadMessage";
 
-// This HTTPS endpoint can only be accessed by your Firebase Users.
+// This HTTPS endpoint can only be accessed by your Firebase UserCollection.
 // Requests need to be authorized by providing an `Authorization` HTTP header
 // with value `Bearer <Firebase ID Token>`.
 exports.app = onRequest(app);
 
-const Chats = getFirestore().collection("chats") as CollectionReference<Channel>;
-const Users = getFirestore().collection("users") as CollectionReference<User>;
+const ChatCollection = getFirestore().collection("chat") as CollectionReference<Channel>;
+const UserCollection = getFirestore().collection("user") as CollectionReference<User>;
 
 /**
  *  Create a new Chat Channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} name Name of the channel
  *  @param {string} type Type of channel ("direct", "group")
@@ -59,7 +59,7 @@ exports.createChannel = onCall(async (request) => {
 
 /**
  *  Rename a existing Group Chat Channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} name Name of the channel
  *  @param {string} chatId ID of the channel to be renamed
@@ -77,7 +77,7 @@ exports.renameChannel = onCall(async (request) => {
 
 /**
  *  Deactivate a existing Group Chat Channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel to be deactivated
  */
@@ -93,7 +93,7 @@ exports.deactivateChannel = onCall(async (request) => {
 
 /**
  *  Add Member to chat channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel to which user should be added
  */
@@ -110,7 +110,7 @@ exports.addMember = onCall(async (request) => {
 
 /**
  *  Add Members to chat channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel to which user should be added
  */
@@ -126,7 +126,7 @@ exports.addMembers = onCall(async (request) => {
 
 /**
  *  Remove Member from chat channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel from which user should be removed
  */
@@ -168,7 +168,7 @@ exports.editUser = onCall(async (request) => {
 /**
  *  Unregister device
  *  This will remove the fcmToken from the firestore if present
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  To prevent chat notifications after logout
  *
@@ -186,7 +186,7 @@ exports.unregisterDevice = onCall(async (request) => {
 
 /**
  *  Send Message
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  This will send push notifications to every user present in the channel
  *
@@ -206,7 +206,7 @@ exports.sendMessage = onCall(async (request) => {
 
 /**
  *  Send Thread Message
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  This will send push notifications to every user present in the channel
  *
@@ -229,7 +229,7 @@ exports.sendThreadMessage = onCall(async (request) => {
 
 /**
  *  Set all messages in the chat channel as read for the user
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the chat channel
  */
@@ -245,8 +245,25 @@ exports.setAllMessagesAsRead = onCall(async (request) => {
 
 
 /**
+ *  Set message in the chat channel as read for the user
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the chat channel
+ *  @param {string} messageId ID of the message
+ */
+exports.markReadMessageForMember = onCall(async (request) => {
+  try {
+    await validateUser(request.auth?.uid);
+    await markReadMessageForMember(request.data.chatId, request.auth?.uid as string, request.data.messageId);
+  } catch (e) {
+    console.log(e);
+  }
+  return;
+});
+
+/**
  *  Set typing timestamp for member in channel
- *  Can only be accessed by only authorized Firebase Users.
+ *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the chat channel
  */
@@ -262,15 +279,15 @@ exports.setTyping = onCall(async (request) => {
 
 async function sendChannelMessage(data: { chatId: string; content: string; type: string; }, uid: string) {
   try {
-    const message = await Chats.doc(data.chatId).collection("messages").add(
+    const message = await ChatCollection.doc(data.chatId).collection("messages").add(
       {
         "content": data.content,
         "type": data.type,
         "timestamp": FieldValue.serverTimestamp(),
-        "user": Users.doc(uid),
+        "user": UserCollection.doc(uid),
       }
     );
-    await setAllMessagesAsRead(data.chatId, uid);
+    await markReadMessageForMember(data.chatId, uid, message.id);
     await sendPushNotifications(data.chatId, uid, data.content, message.id);
   } catch (e) {
     console.log(e);
@@ -279,10 +296,11 @@ async function sendChannelMessage(data: { chatId: string; content: string; type:
 
 async function sendThreadMessage(data: { chatId: string; messageId: string; threadId: string; content: string; type: string; }, uid: string) {
   try {
-    // Create thread doc
-    const threadDoc = Chats.doc(data.chatId)
+    const messageDoc = ChatCollection.doc(data.chatId)
       .collection("messages")
-      .doc(data.messageId)
+      .doc(data.messageId);
+    // Create thread doc
+    const threadDoc = messageDoc
       .collection("threads")
       .doc(data.threadId);
     threadDoc.set({"uuid": data.threadId});
@@ -293,10 +311,10 @@ async function sendThreadMessage(data: { chatId: string; messageId: string; thre
         "content": data.content,
         "type": data.type,
         "timestamp": FieldValue.serverTimestamp(),
-        "user": Users.doc(uid),
+        "user": UserCollection.doc(uid),
       }
     );
-    await setAllMessagesAsRead(data.chatId, uid);
+    await markReadMessageForMember(data.chatId, uid, messageDoc.id);
     await sendPushNotifications(data.chatId, uid, data.content, message.id);
   } catch (e) {
     console.log(e);
@@ -305,7 +323,7 @@ async function sendThreadMessage(data: { chatId: string; messageId: string; thre
 
 async function registerUser(data: { token: string; displayName: string; }, uid: string) {
   try {
-    const userRef = Users.doc(uid);
+    const userRef = UserCollection.doc(uid);
     let userDoc = await userRef.get();
     if (userDoc.exists) {
       await registerToken(userRef, data.token);
@@ -330,7 +348,7 @@ async function registerUser(data: { token: string; displayName: string; }, uid: 
 }
 
 async function editUser(data: { uuid: string; displayName: string; }, uid: string) {
-  const userRef = Users.doc(data.uuid);
+  const userRef = UserCollection.doc(data.uuid);
   const userDoc = await userRef.get();
   if (userDoc.exists) {
     await userRef.update({
@@ -347,7 +365,7 @@ async function editUser(data: { uuid: string; displayName: string; }, uid: strin
 }
 
 async function registerToken(userRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>, token: string) {
-  const users = await Users.where("tokens", "array-contains", token).get();
+  const users = await ChatCollection.where("tokens", "array-contains", token).get();
   for (const user of users.docs) {
     /* eslint-disable */
         await unregisterToken(user.id, token)
@@ -359,14 +377,14 @@ async function registerToken(userRef: FirebaseFirestore.DocumentReference<Fireba
 }
 
 async function unregisterToken(uid: string, token: string) {
-  const userRef = Users.doc(uid);
+  const userRef = UserCollection.doc(uid);
   await userRef.update({
     tokens: FieldValue.arrayRemove(token),
   });
 }
 
 async function createChannel(data: { name: string; type: string; private: boolean; users: User[]; }) {
-  const chatCreateRes = await Chats.add({
+  const chatCreateRes = await ChatCollection.add({
     "name": data.name,
     "type": data.type,
     "private": data.private,
@@ -380,14 +398,14 @@ async function createChannel(data: { name: string; type: string; private: boolea
 }
 
 async function renameChannel(data: { chatId: string; name: string; }) {
-  Chats.doc(data.chatId).update({
+  ChatCollection.doc(data.chatId).update({
     "name": data.name,
   });
   return;
 }
 
 async function deactivateChannel(data: { chatId: string; }) {
-  Chats.doc(data.chatId).update({
+  ChatCollection.doc(data.chatId).update({
     "readOnly": true,
   });
   return;
@@ -400,8 +418,8 @@ async function addMembersToChat(chatId: string, users: User[]) {
 }
 
 async function addMemberToChat(chatId: string, user: User) {
-  const chatRef = Chats.doc(chatId);
-  const userRef = Users.doc(user.id);
+  const chatRef = ChatCollection.doc(chatId);
+  const userRef = UserCollection.doc(user.id);
 
   if (!(await userRef.get()).exists) {
     await userRef.set({
@@ -417,37 +435,35 @@ async function addMemberToChat(chatId: string, user: User) {
     channels: FieldValue.arrayUnion(chatRef),
   });
 
-  // Add member to channel before fetching lastSeen
+  // Add member to channel with latest lastSeen
   await chatRef.collection("members").doc(user.id).set({
     "user": userRef,
-    "lastSeen": null,
+    "lastSeen": await getLastMessage(chatId),
     "active": true,
     "type": user.type,
   });
-
-  await setAllMessagesAsRead(chatId, user.id);
   return;
 }
 
 async function removeMemberFromChat(chatId: string, userId: string) {
-  await Chats.doc(chatId).update({
-    members: FieldValue.arrayRemove(Users.doc(userId)),
+  await ChatCollection.doc(chatId).update({
+    members: FieldValue.arrayRemove(UserCollection.doc(userId)),
   });
-  await Users.doc(userId).update({
-    channels: FieldValue.arrayRemove(Chats.doc(chatId)),
+  await UserCollection.doc(userId).update({
+    channels: FieldValue.arrayRemove(ChatCollection.doc(chatId)),
   });
   return;
 }
 
 async function sendPushNotifications(chatId: string, userId: string, content: string, messageId: string) {
-  const fromUser = await Users.doc(userId).get();
-  const chatChannel = await Chats.doc(chatId).get();
-  const members = await Chats.doc(chatId).collection("members").get();
+  const fromUser = await UserCollection.doc(userId).get();
+  const chatChannel = await ChatCollection.doc(chatId).get();
+  const members = await ChatCollection.doc(chatId).collection("members").get();
 
   for (const memberref of members.docs) {
     /* eslint-disable */
         try {
-            const user = await Users.doc(memberref.ref.id).get();
+            const user = await UserCollection.doc(memberref.ref.id).get();
             const badgeCount = await getBadgeCount(user.id)
             const payload = {
                 notification: {
@@ -476,7 +492,7 @@ async function sendPushNotifications(chatId: string, userId: string, content: st
 
 async function getBadgeCount(userId: string) {
   let totalCount = 0;
-  const user = await Users.doc(userId).get();
+  const user = await UserCollection.doc(userId).get();
   for (const channelRef of user.data()?.channels ?? []) {
     /* eslint-disable */
         try {
@@ -503,12 +519,24 @@ async function getBadgeCount(userId: string) {
 }
 
 async function setAllMessagesAsRead(chatId: string, userId: string) {
-  const messages = await Chats.doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(1).get();
-  if (messages.size > 0) {
-    await updateMemberDocument(chatId, userId, {
-      "lastSeen": messages.docs[0].ref,
-    });
+  const message = await getLastMessage(chatId);
+  if (message) {
+    await markReadMessageForMember(chatId, userId, message.id);
   }
+}
+
+async function getLastMessage(chatId: string) {
+  const messages = await ChatCollection.doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(1).get();
+  if (messages.size > 0) {
+    return messages.docs[0].ref;
+  }
+  return null;
+}
+
+async function markReadMessageForMember(chatId: string, userId: string, messageId: string) {
+  await updateMemberDocument(chatId, userId, {
+    "lastSeen": ChatCollection.doc(chatId).collection("messages").doc(messageId),
+  });
 }
 
 async function setTyping(chatId: string, userId: string) {
@@ -518,7 +546,7 @@ async function setTyping(chatId: string, userId: string) {
 }
 
 async function updateMemberDocument(chatId: string, userId: string, document: { [x: string]: FieldValue | DocumentReference; }) {
-  const memberSnap = Chats.doc(chatId).collection("members").doc(userId);
+  const memberSnap = ChatCollection.doc(chatId).collection("members").doc(userId);
   if ((await memberSnap.get()).exists) {
     await memberSnap.update(document);
   }

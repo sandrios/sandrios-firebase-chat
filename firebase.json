@@ -2,7 +2,7 @@
   "functions": [
     {
       "source": "functions",
-      "codebase": "sandrios-chat",
+      "codebase": "schat",
       "ignore": [
         "node_modules",
         ".git",
