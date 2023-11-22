@@ -1,5 +1,5 @@
 import helmet from "helmet";
-import * as cors from "cors";
+import cors from "cors";
 import {Application} from "express";
 import rateLimiter from "express-rate-limit";
 import {slowDown} from "express-slow-down";

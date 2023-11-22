@@ -5,12 +5,6 @@ import {
 
 initializeApp();
 
-// import * as express from "express";
-// import useMiddlewares from "./middlewares";
-
-// const app = express();
-// useMiddlewares(app);
-
 import {
   getMessaging,
 } from "firebase-admin/messaging";
@@ -30,10 +24,6 @@ import {Member} from "./types/Member";
 import {Channel} from "./types/Channel";
 import {ThreadMessage} from "./types/ThreadMessage";
 
-// This HTTPS endpoint can only be accessed by your Firebase UserCollection.
-// Requests need to be authorized by providing an `Authorization` HTTP header
-// with value `Bearer <Firebase ID Token>`.
-// exports.app = onRequest(app);
 
 const ChatCollection = getFirestore().collection("chat") as CollectionReference<Channel>;
 const UserCollection = getFirestore().collection("user") as CollectionReference<User>;
@@ -279,6 +269,32 @@ exports.setTyping = onCall(async (request) => {
   }
   return;
 });
+
+
+// This HTTPS endpoint can only be accessed by your Firebase UserCollection.
+// Requests need to be authorized by providing an `Authorization` HTTP header
+// with value `Bearer <Firebase ID Token>`.
+
+// import {https} from "firebase-functions";
+import express, {Router as expressRouter} from "express";
+import useMiddlewares from "./middlewares";
+// eslint-disable-next-line new-cap
+const router = expressRouter();
+
+const app = express();
+useMiddlewares(app);
+
+router.get("/badgeCount", async (req, res) => {
+  if (typeof req.query.userId === "string") {
+    const badgeCount = await getBadgeCount(req.query.userId);
+    return res.status(200).json({"badgeCount": badgeCount});
+  }
+  return res.status(400).json({"error": "invalid userId passed"});
+});
+
+app.use("/app", router);
+
+// exports.app = https.onRequest(app);
 
 async function sendChannelMessage(data: { chatId: string; content: string; type: string; }, uid: string) {
   try {
