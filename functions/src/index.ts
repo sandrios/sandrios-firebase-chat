@@ -5,18 +5,17 @@ import {
 
 initializeApp();
 
-import * as express from "express";
-import useMiddlewares from "./middlewares";
+// import * as express from "express";
+// import useMiddlewares from "./middlewares";
 
-const app = express();
-useMiddlewares(app);
+// const app = express();
+// useMiddlewares(app);
 
 import {
   getMessaging,
 } from "firebase-admin/messaging";
 import {
   onCall,
-  onRequest,
   HttpsError,
 } from "firebase-functions/v2/https";
 import {
@@ -34,7 +33,7 @@ import {ThreadMessage} from "./types/ThreadMessage";
 // This HTTPS endpoint can only be accessed by your Firebase UserCollection.
 // Requests need to be authorized by providing an `Authorization` HTTP header
 // with value `Bearer <Firebase ID Token>`.
-exports.app = onRequest(app);
+// exports.app = onRequest(app);
 
 const ChatCollection = getFirestore().collection("chat") as CollectionReference<Channel>;
 const UserCollection = getFirestore().collection("user") as CollectionReference<User>;

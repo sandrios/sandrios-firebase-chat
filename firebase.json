@@ -2,7 +2,7 @@
   "functions": [
     {
       "source": "functions",
-      "codebase": "schat",
+      "codebase": "default",
       "ignore": [
         "node_modules",
         ".git",
@@ -15,19 +15,15 @@
       ]
     }
   ],
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "emulators": {
     "functions": {
       "port": 5001
     },
-    "firestore": {
-      "port": 8081
-    },
     "ui": {
-      "enabled": true,
+      "enabled": true
+    },
+    "singleProjectMode": true,
+    "firestore": {
       "port": 8080
     }
   }
