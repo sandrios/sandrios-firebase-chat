@@ -46,6 +46,7 @@ const UserCollection = getFirestore().collection("user") as CollectionReference<
  *  @param {string} name Name of the channel
  *  @param {string} type Type of channel ("direct", "group")
  *  @param {string} private Boolean flag to indicate if this is protected group or public chat channel
+ *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.createChannel = onCall(async (request) => {
   try {
@@ -96,6 +97,7 @@ exports.deactivateChannel = onCall(async (request) => {
  *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel to which user should be added
+ *  @param {User} user {displayName, uid, type} to be added to the channel
  */
 exports.addMember = onCall(async (request) => {
   try {
@@ -113,6 +115,7 @@ exports.addMember = onCall(async (request) => {
  *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel to which user should be added
+ *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.addMembers = onCall(async (request) => {
   try {
@@ -129,6 +132,7 @@ exports.addMembers = onCall(async (request) => {
  *  Can only be accessed by only authorized Firebase UserCollection.
  *
  *  @param {string} chatId ID of the channel from which user should be removed
+ *  @param {string} userId ID of the user to be removed
  */
 exports.removeMember = onCall(async (request) => {
   try {
@@ -330,7 +334,7 @@ async function registerUser(data: { token: string; displayName: string; }, uid: 
     } else {
       await userRef.set({
         "displayName": data.displayName,
-        "id": uid,
+        "uid": uid,
         "type": "",
         "createdOn": FieldValue.serverTimestamp(),
       });
@@ -357,7 +361,7 @@ async function editUser(data: { uuid: string; displayName: string; }, uid: strin
   } else {
     await userRef.set({
       "displayName": data.displayName,
-      "id": uid,
+      "uid": uid,
       "type": "user",
       "createdOn": FieldValue.serverTimestamp(),
     });
@@ -419,12 +423,12 @@ async function addMembersToChat(chatId: string, users: User[]) {
 
 async function addMemberToChat(chatId: string, user: User) {
   const chatRef = ChatCollection.doc(chatId);
-  const userRef = UserCollection.doc(user.id);
+  const userRef = UserCollection.doc(user.uid);
 
   if (!(await userRef.get()).exists) {
     await userRef.set({
       "displayName": user.displayName,
-      "id": user.id,
+      "uid": user.uid,
       "type": "user",
       "createdOn": FieldValue.serverTimestamp(),
     });
@@ -436,7 +440,7 @@ async function addMemberToChat(chatId: string, user: User) {
   });
 
   // Add member to channel with latest lastSeen
-  await chatRef.collection("members").doc(user.id).set({
+  await chatRef.collection("members").doc(user.uid).set({
     "user": userRef,
     "lastSeen": await getLastMessage(chatId),
     "active": true,

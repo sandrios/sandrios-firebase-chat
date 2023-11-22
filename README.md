@@ -25,40 +25,40 @@ sandrios chat is a free and open source chat client that runs on cloud functions
 
 Cloud Functions for write access. These functions can only be invoked using the firebase functions client SDK:
 ```
-1. Function: 'registerDevice'
+Function: 'registerDevice'
 /**
- *  Register device
+ *  Register Device
  *  This will create user entry in the firestore if not present
  *  This will also remove previously added token for other user and add the token to current user
- * 
- *  @token {string} FCM token to send push notifications
+ *
+ *  @param {string} token FCM token to send push notifications
+ *  @param {string} displayName Display Name of the user
  */
  
- 2. Function: 'unregisterDevice'
- /**
+ Function: 'unregisterDevice'
+/**
  *  Unregister device
  *  This will remove the fcmToken from the firestore if present
- *  Can only be accessed by only authorized Firebase Users.
- * 
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
  *  To prevent chat notifications after logout
- * 
- *  @token {string} FCM token to stop sending notifications
+ *
+ *  @param {string} token FCM token to stop sending notifications
  */
  
- 3. Function: 'sendMessage'
- /**
+ Function: 'sendMessage'
+/**
  *  Send Message
- *  Can only be accessed by only authorized Firebase Users.
- *  To use media messages, upload the media files to either firebase storage or your backend and then add the URL in content payload with appropriate media type.
- * 
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
  *  This will send push notifications to every user present in the channel
- * 
- *  @chatId {string} ID of the chat channel
- *  @type {string} Type of message ("text", "image", "video")
- *  @content {string} Payload based on the type of message
+ *
+ *  @param {string} chatId ID of the chat channel
+ *  @param {string} type Type of message ("text", "image", "video")
+ *  @param {string} content Payload based on the type of message
  */
  
- 3. Function: 'setAllMessagesAsRead'
+ Function: 'setAllMessagesAsRead'
  // Invoke on last position scroll of list
 /**
  *  Set all messages in the chat channel as read for the user
@@ -67,7 +67,7 @@ Cloud Functions for write access. These functions can only be invoked using the 
  *  @chatId {string} ID of the chat channel
  */
  
- 4. Function: 'setTyping'
+ Function: 'setTyping'
  // Invoke with debouncer from UI when user is changing text in text field
  /**
  *  Set typing timestamp for member in channel
@@ -76,29 +76,83 @@ Cloud Functions for write access. These functions can only be invoked using the 
  *  @chatId {string} ID of the chat channel
  */
  
- 5. Function: 'createChannel'
+ Function: 'createChannel'
  /**
  *  Create a new Chat Channel
- *  Can only be accessed by only authorized Firebase Users.
- * 
- *  @name {string} Name of the channel
- *  @type {string} Type of channel ("direct", "group")
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} name Name of the channel
+ *  @param {string} type Type of channel ("direct", "group")
+ *  @param {string} private Boolean flag to indicate if this is protected group or public chat channel
+ *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
+ */
+
+ Function: 'renameChannel'
+/**
+ *  Rename a existing Group Chat Channel
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} name Name of the channel
+ *  @param {string} chatId ID of the channel to be renamed
  */
  
- 6. Function: 'addMember'
+ 
+ Function: 'addMember'
  /**
  *  Add Member to chat channel
  *  Can only be accessed by only authorized Firebase Users.
  * 
  *  @chatId {string} ID of the channel to which user should be added
  */
+
+Function: 'addMembers'
+ /**
+ *  Add Members to chat channel
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the channel to which user should be added
+ *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
+ */
  
- 7. Function: 'removeMember'
+ Function: 'removeMember'
  /**
  *  Remove Member from chat channel
- *  Can only be accessed by only authorized Firebase Users.
- * 
- *  @chatId {string} ID of the channel from which user should be removed
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the channel from which user should be removed
+ *  @param {string} userId ID of the user to be removed
+ */
+
+ Function: 'sendThreadMessage'
+ /**
+ *  Send Thread Message
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  This will send push notifications to every user present in the channel
+ *
+ *  @param {string} chatId ID of the chat channel
+ *  @param {string} messageId ID of the chat message which thread needs to nest to
+ *  @param {string} threadId ID of the new thread that needs to be started. This has been added to keep
+ *                           it unique in case there only needs to be one unique thread per user.
+ *  @param {string} type Type of message ("text", "image", "video")
+ *  @param {string} content Payload based on the type of message
+ */
+
+ Function: 'markReadMessageForMember'
+/**
+ *  Set message in the chat channel as read for the user
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the chat channel
+ *  @param {string} messageId ID of the message
+ */
+
+Function: 'deactivateChannel' 
+/**
+ *  Deactivate a existing Group Chat Channel
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the channel to be deactivated
  */
 ```
 
@@ -114,7 +168,7 @@ Firestore data query for message or channel access: (Client SDK WIP)
 
 ### API: For custom backend integration
 
-There are 4 endpoints exposed as of now for backend to be able to interface with the firestore data (JSON):
+All channels are exposed as endpoints via app/
 
 ```
 1. [GET] app/badgeCount?userId=<id> 

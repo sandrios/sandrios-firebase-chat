@@ -1,7 +1,7 @@
 import {DocumentReference, FieldValue} from "firebase-admin/firestore";
 
 export interface User {
-    id: string
+    uid: string
     displayName: string
     type?: string
     channels?: DocumentReference[]
