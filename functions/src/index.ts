@@ -1,4 +1,3 @@
-
 import {
   initializeApp,
 } from "firebase-admin/app";
@@ -38,8 +37,8 @@ const UserCollection = getFirestore().collection("user") as CollectionReference<
  *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.createChannel = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await createChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -55,8 +54,8 @@ exports.createChannel = onCall(async (request) => {
  *  @param {string} chatId ID of the channel to be renamed
  */
 exports.renameChannel = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await renameChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -72,8 +71,8 @@ exports.renameChannel = onCall(async (request) => {
  *  @param {string} chatId ID of the channel to be deactivated
  */
 exports.deactivateChannel = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await deactivateChannel(request.data);
   } catch (e) {
     console.log(e);
@@ -89,8 +88,8 @@ exports.deactivateChannel = onCall(async (request) => {
  *  @param {User} user {displayName, uid, type} to be added to the channel
  */
 exports.addMember = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await addMemberToChat(request.data.chatId, request.data.user);
   } catch (e) {
     console.log(e);
@@ -107,8 +106,8 @@ exports.addMember = onCall(async (request) => {
  *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.addMembers = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await addMembersToChat(request.data.chatId, request.data.users);
   } catch (e) {
     console.log(e);
@@ -124,8 +123,8 @@ exports.addMembers = onCall(async (request) => {
  *  @param {string} userId ID of the user to be removed
  */
 exports.removeMember = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await removeMemberFromChat(request.data.chatId, request.data.userId);
   } catch (e) {
     console.log(e);
@@ -142,7 +141,7 @@ exports.removeMember = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.registerDevice = onCall(async (request) => {
-  await validateUser(request.auth?.uid);
+  validateUser(request.auth?.uid);
   return await registerUser(request.data, request.auth?.uid as string);
 });
 
@@ -154,7 +153,7 @@ exports.registerDevice = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.editUser = onCall(async (request) => {
-  await validateUser(request.auth?.uid);
+  validateUser(request.auth?.uid);
   return await editUser(request.data, request.auth?.uid as string);
 });
 
@@ -168,8 +167,8 @@ exports.editUser = onCall(async (request) => {
  *  @param {string} token FCM token to stop sending notifications
  */
 exports.unregisterDevice = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await unregisterToken(request.auth?.uid as string, request.data.token);
   } catch (e) {
     console.log(e);
@@ -188,8 +187,8 @@ exports.unregisterDevice = onCall(async (request) => {
  *  @param {string} content Payload based on the type of message
  */
 exports.sendMessage = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await sendChannelMessage(request.data, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -211,8 +210,8 @@ exports.sendMessage = onCall(async (request) => {
  *  @param {string} content Payload based on the type of message
  */
 exports.sendThreadMessage = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await sendThreadMessage(request.data, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -227,8 +226,8 @@ exports.sendThreadMessage = onCall(async (request) => {
  *  @param {string} chatId ID of the chat channel
  */
 exports.setAllMessagesAsRead = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await setAllMessagesAsRead(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
@@ -245,8 +244,8 @@ exports.setAllMessagesAsRead = onCall(async (request) => {
  *  @param {string} messageId ID of the message
  */
 exports.markReadMessageForMember = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await markReadMessageForMember(request.data.chatId, request.auth?.uid as string, request.data.messageId);
   } catch (e) {
     console.log(e);
@@ -261,40 +260,14 @@ exports.markReadMessageForMember = onCall(async (request) => {
  *  @param {string} chatId ID of the chat channel
  */
 exports.setTyping = onCall(async (request) => {
+  validateUser(request.auth?.uid);
   try {
-    await validateUser(request.auth?.uid);
     await setTyping(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
     console.log(e);
   }
   return;
 });
-
-
-// This HTTPS endpoint can only be accessed by your Firebase UserCollection.
-// Requests need to be authorized by providing an `Authorization` HTTP header
-// with value `Bearer <Firebase ID Token>`.
-
-// import {https} from "firebase-functions";
-import express, {Router as expressRouter} from "express";
-import useMiddlewares from "./middlewares";
-// eslint-disable-next-line new-cap
-const router = expressRouter();
-
-const app = express();
-useMiddlewares(app);
-
-router.get("/badgeCount", async (req, res) => {
-  if (typeof req.query.userId === "string") {
-    const badgeCount = await getBadgeCount(req.query.userId);
-    return res.status(200).json({"badgeCount": badgeCount});
-  }
-  return res.status(400).json({"error": "invalid userId passed"});
-});
-
-app.use("/app", router);
-
-// exports.app = https.onRequest(app);
 
 async function sendChannelMessage(data: { chatId: string; content: string; type: string; }, uid: string) {
   try {
@@ -571,8 +544,8 @@ async function updateMemberDocument(chatId: string, userId: string, document: { 
   }
 }
 
-async function validateUser(authUid: string | undefined) {
-  if ((typeof authUid === "string" && authUid.length === 0)) {
+function validateUser(authUid: string | undefined) {
+  if ((typeof authUid === "string" && authUid.length !== 0)) {
     return;
   }
   throw new HttpsError(
