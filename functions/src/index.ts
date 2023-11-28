@@ -39,7 +39,7 @@ const UserCollection = getFirestore().collection("user") as CollectionReference<
 exports.createChannel = onCall(async (request) => {
   validateUser(request.auth?.uid);
   try {
-    await createChannel(request.data);
+    return await createChannel(request.data);
   } catch (e) {
     console.log(e);
   }
@@ -142,7 +142,8 @@ exports.removeMember = onCall(async (request) => {
  */
 exports.registerDevice = onCall(async (request) => {
   validateUser(request.auth?.uid);
-  return await registerUser(request.data, request.auth?.uid as string);
+  await registerUser(request.data, request.auth?.uid as string);
+  return;
 });
 
 /**
@@ -280,7 +281,7 @@ async function sendChannelMessage(data: { chatId: string; content: string; type:
       }
     );
     await markReadMessageForMember(data.chatId, uid, message.id);
-    await sendPushNotifications(data.chatId, uid, data.content, message.id);
+    sendPushNotifications(data.chatId, uid, data.content, message.id);
   } catch (e) {
     console.log(e);
   }
@@ -307,7 +308,7 @@ async function sendThreadMessage(data: { chatId: string; messageId: string; thre
       }
     );
     await markReadMessageForMember(data.chatId, uid, messageDoc.id);
-    await sendPushNotifications(data.chatId, uid, data.content, message.id);
+    sendPushNotifications(data.chatId, uid, data.content, message.id);
   } catch (e) {
     console.log(e);
   }
@@ -316,20 +317,17 @@ async function sendThreadMessage(data: { chatId: string; messageId: string; thre
 async function registerUser(data: { token: string; displayName: string; }, uid: string) {
   try {
     const userRef = UserCollection.doc(uid);
-    let userDoc = await userRef.get();
-    if (userDoc.exists) {
-      await registerToken(userRef, data.token);
-    } else {
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
       await userRef.set({
         "displayName": data.displayName,
         "uid": uid,
-        "type": "",
+        "type": "user",
         "createdOn": FieldValue.serverTimestamp(),
       });
-      await registerToken(userRef, data.token);
-      userDoc = await userRef.get();
     }
-    return userDoc.data();
+    await registerToken(userRef, data.token);
+    return;
   } catch (e) {
     console.log(e);
   }
@@ -357,11 +355,9 @@ async function editUser(data: { uuid: string; displayName: string; }, uid: strin
 }
 
 async function registerToken(userRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>, token: string) {
-  const users = await ChatCollection.where("tokens", "array-contains", token).get();
+  const users = await UserCollection.where("tokens", "array-contains", token).get();
   for (const user of users.docs) {
-    /* eslint-disable */
-        await unregisterToken(user.id, token)
-        /* eslint-enable */
+    await unregisterToken(user.id, token);
   }
   await userRef.update({
     tokens: FieldValue.arrayUnion(token),
@@ -375,7 +371,7 @@ async function unregisterToken(uid: string, token: string) {
   });
 }
 
-async function createChannel(data: { name: string; type: string; private: boolean; users: User[]; }) {
+async function createChannel(data: { name: string; type: string; private: boolean; users: User[]; }): Promise<string> {
   const chatCreateRes = await ChatCollection.add({
     "name": data.name,
     "type": data.type,
@@ -386,7 +382,7 @@ async function createChannel(data: { name: string; type: string; private: boolea
   if (data.users != null) {
     await addMembersToChat(chatCreateRes.id, data.users);
   }
-  return;
+  return chatCreateRes.id;
 }
 
 async function renameChannel(data: { chatId: string; name: string; }) {
