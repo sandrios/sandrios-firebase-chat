@@ -5,27 +5,34 @@ import {
 initializeApp();
 
 import {
-  getMessaging,
-} from "firebase-admin/messaging";
-import {
   onCall,
   HttpsError,
 } from "firebase-functions/v2/https";
+
 import {
-  getFirestore,
-  FieldValue,
-  CollectionReference,
-  DocumentReference,
-} from "firebase-admin/firestore";
+  getS3SignedUrlUpload,
+  deleteS3Object,
+} from "./s3";
 
-import {User} from "./types/User";
-import {Member} from "./types/Member";
-import {Channel} from "./types/Channel";
-import {ThreadMessage} from "./types/ThreadMessage";
+import {
+  addMemberToChat,
+  addMembersToChat,
+  createChannel,
+  deactivateChannel,
+  editUser,
+  markReadMessageForMember,
+  removeMemberFromChat,
+  renameChannel,
+  sendChannelMessage,
+  sendThreadMessage,
+  setAllMessagesAsRead,
+  setTyping,
+} from "./chat";
 
-
-const ChatCollection = getFirestore().collection("chat") as CollectionReference<Channel>;
-const UserCollection = getFirestore().collection("user") as CollectionReference<User>;
+import {
+  registerUser,
+  unregisterToken,
+} from "./notification";
 
 /**
  *  Create a new Chat Channel
@@ -270,275 +277,24 @@ exports.setTyping = onCall(async (request) => {
   return;
 });
 
-async function sendChannelMessage(data: { chatId: string; content: string; type: string; }, uid: string) {
-  try {
-    const message = await ChatCollection.doc(data.chatId).collection("messages").add(
-      {
-        "content": data.content,
-        "type": data.type,
-        "timestamp": FieldValue.serverTimestamp(),
-        "user": UserCollection.doc(uid),
-      }
-    );
-    await markReadMessageForMember(data.chatId, uid, message.id);
-    sendPushNotifications(data.chatId, uid, data.content, message.id);
-  } catch (e) {
-    console.log(e);
-  }
-}
+/**
+ * Presigned S3 PUT URL for asset upload
+ *
+ * @param {String} S3BucketName Bucket name
+ * @param {String} key Path of the file with filename and mimetype to store in the location
+ * @return {String} Signed URL
+ */
+exports.getS3SignedUrlUpload = getS3SignedUrlUpload;
 
-async function sendThreadMessage(data: { chatId: string; messageId: string; threadId: string; content: string; type: string; }, uid: string) {
-  try {
-    const messageDoc = ChatCollection.doc(data.chatId)
-      .collection("messages")
-      .doc(data.messageId);
-    // Create thread doc
-    const threadDoc = messageDoc
-      .collection("threads")
-      .doc(data.threadId);
-    threadDoc.set({"uuid": data.threadId});
-    // Add message in threadMessages doc
-    const threadMessagesDoc = threadDoc.collection("threadMessages") as CollectionReference<ThreadMessage>;
-    const message = await threadMessagesDoc.add(
-      {
-        "content": data.content,
-        "type": data.type,
-        "timestamp": FieldValue.serverTimestamp(),
-        "user": UserCollection.doc(uid),
-      }
-    );
-    await markReadMessageForMember(data.chatId, uid, messageDoc.id);
-    sendPushNotifications(data.chatId, uid, data.content, message.id);
-  } catch (e) {
-    console.log(e);
-  }
-}
+/**
+ * Delete object from S3 bucket
+ *
+ * @param {String} S3BucketName Bucket name
+ * @param {String} key Path of the file with filename and mimetype that was used to store the object
+ * @return
+ */
+exports.deleteS3Object = deleteS3Object;
 
-async function registerUser(data: { token: string; displayName: string; }, uid: string) {
-  try {
-    const userRef = UserCollection.doc(uid);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      await userRef.set({
-        "displayName": data.displayName,
-        "uid": uid,
-        "type": "user",
-        "createdOn": FieldValue.serverTimestamp(),
-      });
-    }
-    await registerToken(userRef, data.token);
-    return;
-  } catch (e) {
-    console.log(e);
-  }
-  return new HttpsError(
-    "invalid-argument",
-    "Bad Request"
-  );
-}
-
-async function editUser(data: { uuid: string; displayName: string; }, uid: string) {
-  const userRef = UserCollection.doc(data.uuid);
-  const userDoc = await userRef.get();
-  if (userDoc.exists) {
-    await userRef.update({
-      "displayName": data.displayName,
-    });
-  } else {
-    await userRef.set({
-      "displayName": data.displayName,
-      "uid": uid,
-      "type": "user",
-      "createdOn": FieldValue.serverTimestamp(),
-    });
-  }
-}
-
-async function registerToken(userRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>, token: string) {
-  const users = await UserCollection.where("tokens", "array-contains", token).get();
-  for (const user of users.docs) {
-    await unregisterToken(user.id, token);
-  }
-  await userRef.update({
-    tokens: FieldValue.arrayUnion(token),
-  });
-}
-
-async function unregisterToken(uid: string, token: string) {
-  const userRef = UserCollection.doc(uid);
-  await userRef.update({
-    tokens: FieldValue.arrayRemove(token),
-  });
-}
-
-async function createChannel(data: { name: string; type: string; private: boolean; users: User[]; }): Promise<string> {
-  const chatCreateRes = await ChatCollection.add({
-    "name": data.name,
-    "type": data.type,
-    "private": data.private,
-    "readOnly": false,
-    "createdOn": FieldValue.serverTimestamp(),
-  });
-  if (data.users != null) {
-    await addMembersToChat(chatCreateRes.id, data.users);
-  }
-  return chatCreateRes.id;
-}
-
-async function renameChannel(data: { chatId: string; name: string; }) {
-  ChatCollection.doc(data.chatId).update({
-    "name": data.name,
-  });
-  return;
-}
-
-async function deactivateChannel(data: { chatId: string; }) {
-  ChatCollection.doc(data.chatId).update({
-    "readOnly": true,
-  });
-  return;
-}
-
-async function addMembersToChat(chatId: string, users: User[]) {
-  for (let i = 0; i < users.length; i++) {
-    await addMemberToChat(chatId, users[i]);
-  }
-}
-
-async function addMemberToChat(chatId: string, user: User) {
-  const chatRef = ChatCollection.doc(chatId);
-  const userRef = UserCollection.doc(user.uid);
-
-  if (!(await userRef.get()).exists) {
-    await userRef.set({
-      "displayName": user.displayName,
-      "uid": user.uid,
-      "type": "user",
-      "createdOn": FieldValue.serverTimestamp(),
-    });
-  }
-
-  // Add channel record to user document
-  await userRef.update({
-    channels: FieldValue.arrayUnion(chatRef),
-  });
-
-  // Add member to channel with latest lastSeen
-  await chatRef.collection("members").doc(user.uid).set({
-    "user": userRef,
-    "lastSeen": await getLastMessage(chatId),
-    "active": true,
-    "type": user.type,
-  });
-  return;
-}
-
-async function removeMemberFromChat(chatId: string, userId: string) {
-  await ChatCollection.doc(chatId).update({
-    members: FieldValue.arrayRemove(UserCollection.doc(userId)),
-  });
-  await UserCollection.doc(userId).update({
-    channels: FieldValue.arrayRemove(ChatCollection.doc(chatId)),
-  });
-  return;
-}
-
-async function sendPushNotifications(chatId: string, userId: string, content: string, messageId: string) {
-  const fromUser = await UserCollection.doc(userId).get();
-  const chatChannel = await ChatCollection.doc(chatId).get();
-  const members = await ChatCollection.doc(chatId).collection("members").get();
-
-  for (const memberref of members.docs) {
-    /* eslint-disable */
-        try {
-            const user = await UserCollection.doc(memberref.ref.id).get();
-            const badgeCount = await getBadgeCount(user.id)
-            const payload = {
-                notification: {
-                    title: `${fromUser.data()?.displayName} has sent a message on ${chatChannel.data()?.name}`,
-                    body: content,
-                    badge: `${badgeCount}`,
-                    tag: messageId
-                },
-                data: {
-                    "userId": userId,
-                    "chatId": chatId,
-                    "type": "chat"
-                }
-            }
-            const options = {
-                "collapseKey": chatId
-            }
-            const a = await getMessaging().sendToDevice(user.data()?.tokens ?? [], payload, options)
-            console.log(a)
-        } catch (e) {
-            console.log(e)
-        }
-        /* eslint-enable */
-  }
-}
-
-async function getBadgeCount(userId: string) {
-  let totalCount = 0;
-  const user = await UserCollection.doc(userId).get();
-  for (const channelRef of user.data()?.channels ?? []) {
-    /* eslint-disable */
-        try {
-            const memberRef = channelRef.collection("members").doc(user.id) as DocumentReference<Member>;
-            const member = await memberRef.get();
-            var lastSeenMessage = null
-            if (member.data()?.lastSeen) {
-                lastSeenMessage = await member.data()!.lastSeen.get()
-            }
-            var queryRef = channelRef.collection("messages").orderBy('timestamp', 'desc')
-            if (lastSeenMessage) {
-                if (lastSeenMessage.exists) {
-                    queryRef = queryRef.endBefore(lastSeenMessage)
-                }
-            }
-            const chatChannel = await queryRef.get()
-            totalCount = totalCount + chatChannel.size
-        } catch (e) {
-            console.log(e)
-        }
-        /* eslint-enable */
-  }
-  return totalCount;
-}
-
-async function setAllMessagesAsRead(chatId: string, userId: string) {
-  const message = await getLastMessage(chatId);
-  if (message) {
-    await markReadMessageForMember(chatId, userId, message.id);
-  }
-}
-
-async function getLastMessage(chatId: string) {
-  const messages = await ChatCollection.doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(1).get();
-  if (messages.size > 0) {
-    return messages.docs[0].ref;
-  }
-  return null;
-}
-
-async function markReadMessageForMember(chatId: string, userId: string, messageId: string) {
-  await updateMemberDocument(chatId, userId, {
-    "lastSeen": ChatCollection.doc(chatId).collection("messages").doc(messageId),
-  });
-}
-
-async function setTyping(chatId: string, userId: string) {
-  await updateMemberDocument(chatId, userId, {
-    "lastType": FieldValue.serverTimestamp(),
-  });
-}
-
-async function updateMemberDocument(chatId: string, userId: string, document: { [x: string]: FieldValue | DocumentReference; }) {
-  const memberSnap = ChatCollection.doc(chatId).collection("members").doc(userId);
-  if ((await memberSnap.get()).exists) {
-    await memberSnap.update(document);
-  }
-}
 
 function validateUser(authUid: string | undefined) {
   if ((typeof authUid === "string" && authUid.length !== 0)) {
