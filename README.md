@@ -54,6 +54,7 @@ Function: 'registerDevice'
  *  This will send push notifications to every user present in the channel
  *
  *  @param {string} chatId ID of the chat channel
+ *  @param {string} messageId ID of message document (For local storage)
  *  @param {string} type Type of message ("text", "image", "video")
  *  @param {string} content Payload based on the type of message
  */
@@ -136,6 +137,7 @@ Function: 'addMembers'
  *                           it unique in case there only needs to be one unique thread per user.
  *  @param {string} type Type of message ("text", "image", "video")
  *  @param {string} content Payload based on the type of message
+ *  @param {string} threadMessageId ID of thread message document (For local storage)
  */
 
  Function: 'markReadMessageForMember'

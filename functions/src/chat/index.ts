@@ -23,27 +23,50 @@ import {
 } from "../types/ThreadMessage";
 import {sendNotificationToUser} from "../notification";
 
-export async function sendChannelMessage(data: { chatId: string; content: string; type: string; }, uid: string) {
+export async function sendChannelMessage(
+  data:
+  {
+    chatId: string;
+    content: string;
+    type: string;
+    messageId: string;
+  },
+  uid: string,
+) {
   try {
-    const message = await ChatCollection.doc(data.chatId).collection("messages").add(
-      {
-        "content": data.content,
-        "type": data.type,
-        "timestamp": FieldValue.serverTimestamp(),
-        "user": UserCollection.doc(uid),
-      }
-    );
-    await ChatCollection.doc(data.chatId).update( {
-      "lastMessage": message,
-    });
-    await markReadMessageForMember(data.chatId, uid, message.id);
-    sendPushNotifications(data.chatId, uid, data.content, message.id);
+    const message = await ChatCollection
+      .doc(data.chatId)
+      .collection("messages")
+      .doc(data.messageId).set(
+        {
+          "content": data.content,
+          "type": data.type,
+          "timestamp": FieldValue.serverTimestamp(),
+          "user": UserCollection.doc(uid),
+        }
+      );
+    await ChatCollection
+      .doc(data.chatId)
+      .update( {
+        "lastMessage": message,
+      });
+    await markReadMessageForMember(data.chatId, uid, data.messageId);
+    sendPushNotifications(data.chatId, uid, data.content, data.messageId);
   } catch (e) {
     console.log(e);
   }
 }
 
-export async function sendThreadMessage(data: { chatId: string; messageId: string; threadId: string; content: string; type: string; }, uid: string) {
+export async function sendThreadMessage(
+  data: {
+    chatId: string;
+    messageId: string;
+    threadId: string;
+    content: string;
+    type: string;
+    threadMessageId: string;
+}, uid: string,
+) {
   try {
     const messageDoc = ChatCollection.doc(data.chatId)
       .collection("messages")
@@ -52,22 +75,27 @@ export async function sendThreadMessage(data: { chatId: string; messageId: strin
     const threadDoc = messageDoc
       .collection("threads")
       .doc(data.threadId);
-    threadDoc.set({"uuid": data.threadId});
+    await threadDoc.set({"uuid": data.threadId});
     // Add message in threadMessages doc
-    const threadMessagesDoc = threadDoc.collection("threadMessages") as CollectionReference<ThreadMessage>;
-    const message = await threadMessagesDoc.add(
-      {
-        "content": data.content,
-        "type": data.type,
-        "timestamp": FieldValue.serverTimestamp(),
-        "user": UserCollection.doc(uid),
-      }
-    );
-    await ChatCollection.doc(data.chatId).update( {
-      "lastMessage": message,
-    });
+    const threadMessagesDoc = threadDoc
+      .collection("threadMessages") as CollectionReference<ThreadMessage>;
+    const message = await threadMessagesDoc
+      .doc(data.threadMessageId)
+      .set(
+        {
+          "content": data.content,
+          "type": data.type,
+          "timestamp": FieldValue.serverTimestamp(),
+          "user": UserCollection.doc(uid),
+        }
+      );
+    await ChatCollection
+      .doc(data.chatId)
+      .update( {
+        "lastMessage": message,
+      });
     await markReadMessageForMember(data.chatId, uid, messageDoc.id);
-    sendPushNotifications(data.chatId, uid, data.content, message.id);
+    sendPushNotifications(data.chatId, uid, data.content, data.threadMessageId);
   } catch (e) {
     console.log(e);
   }
