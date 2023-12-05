@@ -60,6 +60,7 @@ export async function sendNotificationToUser({
   title,
   content,
   badgeCount,
+  tag,
   data,
   collapseKey,
 }: TSNotification) {
@@ -72,6 +73,9 @@ export async function sendNotificationToUser({
     },
     android: {
       collapseKey: collapseKey,
+      notification: {
+        tag: tag,
+      },
     },
     apns: {
       payload: {
@@ -93,8 +97,9 @@ export async function sendNotificationToUser({
 interface TSNotification {
   toUser: string,
   title: string,
-  content: string,
+  content?: string,
+  tag?: string,
   badgeCount: number,
-  collapseKey: string,
-  data: DataMessagePayload,
+  collapseKey?: string,
+  data?: DataMessagePayload,
 }

@@ -293,7 +293,8 @@ exports.setTyping = onCall(async (request) => {
  * @param {String} toUser UID of the user
  * @param {String} title Title of the notification
  * @param {String} content Content of the notification
- * @param {String} tag TAG or collapseKey to be used for the notification
+ * @param {String} tag TAG to be used for the notification
+ * @param {String} collapseKey collapseKey to be used for the notification
  * @param {Map} data data payload to be processed by application (Can be empty map)
  */
 exports.sendNotificationToUser = onCall(async (request) => {
@@ -303,8 +304,9 @@ exports.sendNotificationToUser = onCall(async (request) => {
       toUser: request.data.toUser,
       title: request.data.title,
       content: request.data.content,
+      tag: request.data.tag,
       badgeCount: 0,
-      collapseKey: request.data.tag,
+      collapseKey: request.data.collapseKey,
       data: request.data.data,
     }
   );
