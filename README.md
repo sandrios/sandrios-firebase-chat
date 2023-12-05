@@ -156,6 +156,19 @@ Function: 'deactivateChannel'
  *
  *  @param {string} chatId ID of the channel to be deactivated
  */
+
+Function: 'sendNotificationToUser'
+ /**
+ * Send custom notification to a user.
+ * This is useful in cases of custom featues added on top of chat.
+ * Can be removed if not required
+ *
+ * @param {String} toUser UID of the user
+ * @param {String} title Title of the notification
+ * @param {String} content Content of the notification
+ * @param {String} tag TAG or collapseKey to be used for the notification
+ * @param {Map} data data payload to be processed by application (Can be empty map)
+ */
 ```
 
 Firestore data query for message or channel access: (Client SDK WIP)
@@ -166,41 +179,6 @@ Firestore data query for message or channel access: (Client SDK WIP)
 4. Unread count of chat channel: '/chats/<chatId>/members' has lastSeen which will provide the last seen message. channelRef.collection("messages").orderBy('timestamp', 'desc').endBefore(lastSeen) This will give you a collection of all messages between last seen and latest.
 5. Stream typing status: Member document of the chat channel will contain "lastType" if you UI is updating typingStatus. This field is a timestamp last time user tried to enter text in the channel. Stream this to get if the user is typing. Run where query firestore based on the timestamp and current time difference is less than X seconds.
 
-```
-
-### API: For custom backend integration
-
-All channels are exposed as endpoints via app/
-
-```
-1. [GET] app/badgeCount?userId=<id> 
-// Open
-This will return the badge count of unread messages for the user. This will be helpful in case you want to add chat badge count with your app related badges. However if a chat notification is sent after the backend notification, count will be overridden.
-
-2. [POST] app/createChannel
-// Authorization header required
-// Request body
-{
-    'name': <name of chat channel>,
-    'type': "group" or "direct",
-    'userId': <id of the user to be added to the channel>
-}
-
-3. [POST] app/addMember
-// Authorization header required
-// Request body
-{
-    'chatId': <id of chat channel>,
-    'userId': <id of user to be added>
-}
-
-4. [DELETE] app/removeMember
-// Authorization header required
-// Request body
-{
-    'chatId': <id of chat channel>,
-    'userId': <id of user to be removed>
-}
 ```
 
 #### Security

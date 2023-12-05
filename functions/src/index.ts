@@ -10,6 +10,10 @@ import {
 } from "firebase-functions/v2/https";
 
 import {
+  AuthData,
+} from "firebase-functions/lib/common/providers/https";
+
+import {
   getS3SignedUrlUpload,
   deleteS3Object,
 } from "./s3";
@@ -32,7 +36,9 @@ import {
 import {
   registerUser,
   unregisterToken,
+  sendNotificationToUser,
 } from "./notification";
+
 
 /**
  *  Create a new Chat Channel
@@ -44,7 +50,7 @@ import {
  *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.createChannel = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     return await createChannel(request.data);
   } catch (e) {
@@ -61,7 +67,7 @@ exports.createChannel = onCall(async (request) => {
  *  @param {string} chatId ID of the channel to be renamed
  */
 exports.renameChannel = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await renameChannel(request.data);
   } catch (e) {
@@ -78,7 +84,7 @@ exports.renameChannel = onCall(async (request) => {
  *  @param {string} chatId ID of the channel to be deactivated
  */
 exports.deactivateChannel = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await deactivateChannel(request.data);
   } catch (e) {
@@ -95,7 +101,7 @@ exports.deactivateChannel = onCall(async (request) => {
  *  @param {User} user {displayName, uid, type} to be added to the channel
  */
 exports.addMember = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await addMemberToChat(request.data.chatId, request.data.user);
   } catch (e) {
@@ -113,7 +119,7 @@ exports.addMember = onCall(async (request) => {
  *  @param {User[]} users List of User {displayName, uid, type} to be added to the channel
  */
 exports.addMembers = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await addMembersToChat(request.data.chatId, request.data.users);
   } catch (e) {
@@ -130,7 +136,7 @@ exports.addMembers = onCall(async (request) => {
  *  @param {string} userId ID of the user to be removed
  */
 exports.removeMember = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await removeMemberFromChat(request.data.chatId, request.data.userId);
   } catch (e) {
@@ -148,7 +154,7 @@ exports.removeMember = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.registerDevice = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   await registerUser(request.data, request.auth?.uid as string);
   return;
 });
@@ -161,7 +167,7 @@ exports.registerDevice = onCall(async (request) => {
  *  @param {string} displayName Display Name of the user
  */
 exports.editUser = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   return await editUser(request.data, request.auth?.uid as string);
 });
 
@@ -175,7 +181,7 @@ exports.editUser = onCall(async (request) => {
  *  @param {string} token FCM token to stop sending notifications
  */
 exports.unregisterDevice = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await unregisterToken(request.auth?.uid as string, request.data.token);
   } catch (e) {
@@ -196,7 +202,7 @@ exports.unregisterDevice = onCall(async (request) => {
  *  @param {string} content Payload based on the type of message
  */
 exports.sendMessage = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await sendChannelMessage(request.data, request.auth?.uid as string);
   } catch (e) {
@@ -220,7 +226,7 @@ exports.sendMessage = onCall(async (request) => {
 *  @param {string} threadMessageId ID of thread message document (For local storage)
  */
 exports.sendThreadMessage = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await sendThreadMessage(request.data, request.auth?.uid as string);
   } catch (e) {
@@ -236,7 +242,7 @@ exports.sendThreadMessage = onCall(async (request) => {
  *  @param {string} chatId ID of the chat channel
  */
 exports.setAllMessagesAsRead = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await setAllMessagesAsRead(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
@@ -254,7 +260,7 @@ exports.setAllMessagesAsRead = onCall(async (request) => {
  *  @param {string} messageId ID of the message
  */
 exports.markReadMessageForMember = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await markReadMessageForMember(request.data.chatId, request.auth?.uid as string, request.data.messageId);
   } catch (e) {
@@ -270,7 +276,7 @@ exports.markReadMessageForMember = onCall(async (request) => {
  *  @param {string} chatId ID of the chat channel
  */
 exports.setTyping = onCall(async (request) => {
-  validateUser(request.auth?.uid);
+  validateUser(request.auth);
   try {
     await setTyping(request.data.chatId, request.auth?.uid as string);
   } catch (e) {
@@ -278,6 +284,32 @@ exports.setTyping = onCall(async (request) => {
   }
   return;
 });
+
+/**
+ * Send custom notification to a user.
+ * This is useful in cases of custom featues added on top of chat.
+ * Can be removed if not required
+ *
+ * @param {String} toUser UID of the user
+ * @param {String} title Title of the notification
+ * @param {String} content Content of the notification
+ * @param {String} tag TAG or collapseKey to be used for the notification
+ * @param {Map} data data payload to be processed by application (Can be empty map)
+ */
+exports.sendNotificationToUser = onCall(async (request) => {
+  validateUser(request.auth);
+  await sendNotificationToUser(
+    {
+      toUser: request.data.toUser,
+      title: request.data.title,
+      content: request.data.content,
+      badgeCount: 0,
+      collapseKey: request.data.tag,
+      data: request.data.data,
+    }
+  );
+});
+
 
 /**
  * Presigned S3 PUT URL for asset upload
@@ -297,9 +329,8 @@ exports.getS3SignedUrlUpload = getS3SignedUrlUpload;
  */
 exports.deleteS3Object = deleteS3Object;
 
-
-function validateUser(authUid: string | undefined) {
-  if ((typeof authUid === "string" && authUid.length !== 0)) {
+function validateUser(auth?: AuthData) {
+  if ((typeof auth?.uid === "string" && auth?.uid.length !== 0)) {
     return;
   }
   throw new HttpsError(

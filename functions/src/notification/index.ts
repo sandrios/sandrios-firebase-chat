@@ -2,6 +2,7 @@ import {FieldValue} from "firebase-admin/firestore";
 
 import {
   DataMessagePayload,
+  MulticastMessage,
   getMessaging,
 } from "firebase-admin/messaging";
 
@@ -59,32 +60,40 @@ export async function sendNotificationToUser({
   title,
   content,
   badgeCount,
-  tag,
   data,
   collapseKey,
 }: TSNotification) {
-  const payload = {
+  const user = await UserCollection.doc(toUser).get();
+  const message: MulticastMessage = {
     notification: {
       title: title,
       body: content,
-      badge: `${badgeCount}`,
-      tag: tag,
+      // tag: tag,
+    },
+    android: {
+      collapseKey: collapseKey,
+    },
+    apns: {
+      payload: {
+        aps: {
+          threadId: collapseKey,
+          badge: badgeCount,
+        },
+      },
+    },
+    webpush: {
+      notification: { },
     },
     data: data,
+    tokens: user.data()?.tokens ?? [],
   };
-  const options = {
-    "collapseKey": collapseKey,
-  };
-  const user = await UserCollection.doc(toUser).get();
-  const a = await getMessaging().sendToDevice(user.data()?.tokens ?? [], payload, options);
-  console.log(a);
+  await getMessaging().sendEachForMulticast(message);
 }
 
 interface TSNotification {
   toUser: string,
   title: string,
   content: string,
-  tag: string,
   badgeCount: number,
   collapseKey: string,
   data: DataMessagePayload,
