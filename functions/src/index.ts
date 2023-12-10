@@ -198,7 +198,8 @@ exports.unregisterDevice = onCall(async (request) => {
  *
  *  @param {string} chatId ID of the chat channel
  *  @param {string} messageId ID of message document (For local storage)
- *  @param {string} type Type of message ("text", "image", "video")
+ *  @param {string} type Type of message (To process the item type in frontend)
+ *  @param {List<MessageAttachment>} attachments List of attachments to be sent with message
  *  @param {string} content Payload based on the type of message
  */
 exports.sendMessage = onCall(async (request) => {
@@ -223,7 +224,8 @@ exports.sendMessage = onCall(async (request) => {
  *                           it unique in case there only needs to be one unique thread per user.
  *  @param {string} type Type of message ("text", "image", "video")
  *  @param {string} content Payload based on the type of message
-*  @param {string} threadMessageId ID of thread message document (For local storage)
+ *  @param {List<MessageAttachment>} attachments List of attachments to be sent with message
+ *  @param {string} threadMessageId ID of thread message document (For local storage)
  */
 exports.sendThreadMessage = onCall(async (request) => {
   validateUser(request.auth);

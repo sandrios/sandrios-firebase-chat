@@ -1,4 +1,5 @@
 import {DocumentReference, FieldValue} from "firebase-admin/firestore";
+import {MessageAttachment} from "./MessageAttachment";
 
 export interface ChannelMessage {
     id: string
@@ -6,4 +7,5 @@ export interface ChannelMessage {
     type?: string
     channels?: DocumentReference[]
     createdOn: FieldValue
+    attachments?: MessageAttachment[]
 }

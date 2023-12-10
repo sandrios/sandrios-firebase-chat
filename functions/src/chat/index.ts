@@ -9,7 +9,6 @@ import {
   ChatCollection,
 } from "../constants";
 
-
 import {
   User,
 } from "../types/User";
@@ -21,7 +20,14 @@ import {
 import {
   ThreadMessage,
 } from "../types/ThreadMessage";
-import {sendNotificationToUser} from "../notification";
+
+import {
+  MessageAttachment,
+} from "../types/MessageAttachment";
+
+import {
+  sendNotificationToUser,
+} from "../notification";
 
 export async function sendChannelMessage(
   data:
@@ -30,6 +36,7 @@ export async function sendChannelMessage(
     content: string;
     type: string;
     messageId: string;
+    attachments: MessageAttachment[];
   },
   uid: string,
 ) {
@@ -43,6 +50,7 @@ export async function sendChannelMessage(
           "type": data.type,
           "timestamp": FieldValue.serverTimestamp(),
           "user": UserCollection.doc(uid),
+          "attachments": data.attachments,
         }
       );
     await ChatCollection
@@ -65,6 +73,7 @@ export async function sendThreadMessage(
     content: string;
     type: string;
     threadMessageId: string;
+    attachments: MessageAttachment[];
 }, uid: string,
 ) {
   try {
@@ -87,6 +96,7 @@ export async function sendThreadMessage(
           "type": data.type,
           "timestamp": FieldValue.serverTimestamp(),
           "user": UserCollection.doc(uid),
+          "attachments": data.attachments,
         }
       );
     await ChatCollection
