@@ -166,14 +166,6 @@ export async function addMemberToChat(chatId: string, user: User) {
   const chatRef = ChatCollection.doc(chatId);
   const userRef = UserCollection.doc(user.uid);
 
-  if (!(await userRef.get()).exists) {
-    await userRef.set({
-      "displayName": user.displayName,
-      "uid": user.uid,
-      "type": "user",
-      "createdOn": FieldValue.serverTimestamp(),
-    });
-  }
 
   // Add channel record to user document
   await userRef.update({
