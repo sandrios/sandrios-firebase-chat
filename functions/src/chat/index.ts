@@ -21,10 +21,6 @@ import {
 } from "../types/ChatMessage";
 
 import {
-  ThreadMessage,
-} from "../types/ThreadMessage";
-
-import {
   sendNotificationToUser,
 } from "../notification";
 
@@ -58,28 +54,25 @@ export async function sendChannelMessage(
 }
 
 export async function sendThreadMessage(
-  data: ThreadMessage, uid: string,
+  data: ChatMessage, uid: string,
 ) {
   try {
-    const messageDoc = ChatCollection.doc(data.chatId)
+    await ChatCollection.doc(data.chatId)
       .collection("messages")
-      .doc(data.messageId);
-      // Create thread doc
-    const threadCollection = messageDoc
-      .collection("threads");
-
-    await threadCollection
-      .doc(data.threadId)
-      .set({
-        "content": data.content,
-        "type": data.type,
-        "timestamp": FieldValue.serverTimestamp(),
-        "user": UserCollection.doc(uid),
-        "attachments": data.attachments,
-      });
+      .doc(data.messageId).update(
+        {
+          "threads": FieldValue.arrayUnion({
+            "content": data.content,
+            "type": data.type,
+            "timestamp": FieldValue.serverTimestamp(),
+            "user": UserCollection.doc(uid),
+            "attachments": data.attachments,
+          }),
+        }
+      );
 
     setAllMessagesAsRead(data.chatId, uid);
-    sendPushNotifications(data.chatId, uid, data.content, data.threadId);
+    sendPushNotifications(data.chatId, uid, data.content, data.messageId);
   } catch (e) {
     console.log(e);
   }
