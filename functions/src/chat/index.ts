@@ -61,7 +61,7 @@ export async function sendThreadMessage(
       .collection("messages")
       .doc(data.messageId).update(
         {
-          "threads": FieldValue.arrayUnion({
+          "threadMessages": FieldValue.arrayUnion({
             "content": data.content,
             "type": data.type,
             "timestamp": FieldValue.serverTimestamp(),
