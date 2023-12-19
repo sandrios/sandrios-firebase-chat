@@ -1,5 +1,5 @@
-import {DocumentReference} from "firebase-admin/firestore";
+import {FieldValue} from "firebase-admin/firestore";
 
 export interface Member {
-    lastSeen: DocumentReference
+    lastSeen: FieldValue
 }

@@ -24,7 +24,6 @@ import {
   createChannel,
   deactivateChannel,
   editUser,
-  markReadMessageForMember,
   removeMemberFromChat,
   renameChannel,
   sendChannelMessage,
@@ -253,23 +252,6 @@ exports.setAllMessagesAsRead = onCall(async (request) => {
   return;
 });
 
-
-/**
- *  Set message in the chat channel as read for the user
- *  Can only be accessed by only authorized Firebase UserCollection.
- *
- *  @param {string} chatId ID of the chat channel
- *  @param {string} messageId ID of the message
- */
-exports.markReadMessageForMember = onCall(async (request) => {
-  validateUser(request.auth);
-  try {
-    await markReadMessageForMember(request.data.chatId, request.auth?.uid as string, request.data.messageId);
-  } catch (e) {
-    console.log(e);
-  }
-  return;
-});
 
 /**
  *  Set typing timestamp for member in channel

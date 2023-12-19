@@ -1,6 +1,5 @@
 import {
   FieldValue,
-  CollectionReference,
   DocumentReference,
 } from "firebase-admin/firestore";
 
@@ -18,30 +17,23 @@ import {
 } from "../types/Member";
 
 import {
-  ThreadMessage,
-} from "../types/ThreadMessage";
+  ChatMessage,
+} from "../types/ChatMessage";
 
 import {
-  MessageAttachment,
-} from "../types/MessageAttachment";
+  ThreadMessage,
+} from "../types/ThreadMessage";
 
 import {
   sendNotificationToUser,
 } from "../notification";
 
 export async function sendChannelMessage(
-  data:
-  {
-    chatId: string;
-    content: string;
-    type: string;
-    messageId: string;
-    attachments: MessageAttachment[];
-  },
+  data: ChatMessage,
   uid: string,
 ) {
   try {
-    const message = await ChatCollection
+    await ChatCollection
       .doc(data.chatId)
       .collection("messages")
       .doc(data.messageId).set(
@@ -55,10 +47,10 @@ export async function sendChannelMessage(
       );
     await ChatCollection
       .doc(data.chatId)
-      .update( {
-        "lastMessage": message,
+      .update({
+        "lastModified": FieldValue.serverTimestamp(),
       });
-    await markReadMessageForMember(data.chatId, uid, data.messageId);
+    setAllMessagesAsRead(data.chatId, uid);
     sendPushNotifications(data.chatId, uid, data.content, data.messageId);
   } catch (e) {
     console.log(e);
@@ -66,46 +58,28 @@ export async function sendChannelMessage(
 }
 
 export async function sendThreadMessage(
-  data: {
-    chatId: string;
-    messageId: string;
-    threadId: string;
-    content: string;
-    type: string;
-    threadMessageId: string;
-    attachments: MessageAttachment[];
-}, uid: string,
+  data: ThreadMessage, uid: string,
 ) {
   try {
     const messageDoc = ChatCollection.doc(data.chatId)
       .collection("messages")
       .doc(data.messageId);
       // Create thread doc
-    const threadDoc = messageDoc
-      .collection("threads")
-      .doc(data.threadId);
-    await threadDoc.set({"uuid": data.threadId});
-    // Add message in threadMessages doc
-    const threadMessagesDoc = threadDoc
-      .collection("threadMessages") as CollectionReference<ThreadMessage>;
-    const message = await threadMessagesDoc
-      .doc(data.threadMessageId)
-      .set(
-        {
-          "content": data.content,
-          "type": data.type,
-          "timestamp": FieldValue.serverTimestamp(),
-          "user": UserCollection.doc(uid),
-          "attachments": data.attachments,
-        }
-      );
-    await ChatCollection
-      .doc(data.chatId)
-      .update( {
-        "lastMessage": message,
+    const threadCollection = messageDoc
+      .collection("threads");
+
+    await threadCollection
+      .doc(data.threadId)
+      .set({
+        "content": data.content,
+        "type": data.type,
+        "timestamp": FieldValue.serverTimestamp(),
+        "user": UserCollection.doc(uid),
+        "attachments": data.attachments,
       });
-    await markReadMessageForMember(data.chatId, uid, messageDoc.id);
-    sendPushNotifications(data.chatId, uid, data.content, data.threadMessageId);
+
+    setAllMessagesAsRead(data.chatId, uid);
+    sendPushNotifications(data.chatId, uid, data.content, data.threadId);
   } catch (e) {
     console.log(e);
   }
@@ -135,6 +109,7 @@ export async function createChannel(data: { name: string; type: string; private:
     "private": data.private,
     "readOnly": false,
     "createdOn": FieldValue.serverTimestamp(),
+    "lastModified": FieldValue.serverTimestamp(),
   });
   if (data.users != null) {
     await addMembersToChat(chatCreateRes.id, data.users);
@@ -173,12 +148,14 @@ export async function addMemberToChat(chatId: string, user: User) {
   });
 
   // Add member to channel with latest lastSeen
-  await chatRef.collection("members").doc(user.uid).set({
-    "user": userRef,
-    "lastSeen": await getLastMessage(chatId),
-    "active": true,
-    "type": user.type,
-  });
+  await chatRef
+    .collection("members")
+    .doc(user.uid).set({
+      "user": userRef,
+      "lastSeen": FieldValue.serverTimestamp(),
+      "active": true,
+      "type": user.type,
+    });
   return;
 }
 
@@ -200,44 +177,25 @@ export async function getBadgeCount(userId: string) {
           try {
               const memberRef = channelRef.collection("members").doc(user.id) as DocumentReference<Member>;
               const member = await memberRef.get();
-              var lastSeenMessage = null
-              if (member.data()?.lastSeen) {
-                  lastSeenMessage = await member.data()!.lastSeen.get()
-              }
-              var queryRef = channelRef.collection("messages").orderBy('timestamp', 'desc')
-              if (lastSeenMessage) {
-                  if (lastSeenMessage.exists) {
-                      queryRef = queryRef.endBefore(lastSeenMessage)
-                  }
-              }
-              const chatChannel = await queryRef.get()
-              totalCount = totalCount + chatChannel.size
+            
+              var messageCountRef = channelRef
+              .collection("messages")
+              .orderBy('timestamp', 'desc')
+              .where('timestamp',">",member.data()!.lastSeen)
+              .count()
+           
+              const messageCount = await messageCountRef.get()
+              totalCount = totalCount + messageCount.data().count
           } catch (e) {
               console.log(e)
           }
-          /* eslint-enable */
   }
   return totalCount;
 }
 
 export async function setAllMessagesAsRead(chatId: string, userId: string) {
-  const message = await getLastMessage(chatId);
-  if (message) {
-    await markReadMessageForMember(chatId, userId, message.id);
-  }
-}
-
-export async function getLastMessage(chatId: string) {
-  const messages = await ChatCollection.doc(chatId).collection("messages").orderBy("timestamp", "desc").limit(1).get();
-  if (messages.size > 0) {
-    return messages.docs[0].ref;
-  }
-  return null;
-}
-
-export async function markReadMessageForMember(chatId: string, userId: string, messageId: string) {
   await updateMemberDocument(chatId, userId, {
-    "lastSeen": ChatCollection.doc(chatId).collection("messages").doc(messageId),
+    "lastSeen": FieldValue.serverTimestamp(),
   });
 }
 

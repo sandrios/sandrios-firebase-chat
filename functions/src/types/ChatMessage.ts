@@ -1,11 +1,12 @@
 import {DocumentReference, FieldValue} from "firebase-admin/firestore";
 import {MessageAttachment} from "./MessageAttachment";
 
-export interface ChannelMessage {
-    id: string
-    displayName: string
-    type?: string
-    channels?: DocumentReference[]
-    createdOn: FieldValue
+export interface ChatMessage {
+    chatId: string
+    messageId: string
+    content: string
+    type: string
+    timestamp: FieldValue
+    user: DocumentReference
     attachments?: MessageAttachment[]
 }
