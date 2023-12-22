@@ -1,6 +1,7 @@
 import {
   FieldValue,
   DocumentReference,
+  Timestamp,
 } from "firebase-admin/firestore";
 
 import {
@@ -29,6 +30,7 @@ export async function sendChannelMessage(
   uid: string,
 ) {
   try {
+    const timestamp = Timestamp.now();
     await ChatCollection
       .doc(data.chatId)
       .collection("messages")
@@ -36,7 +38,7 @@ export async function sendChannelMessage(
         {
           "content": data.content,
           "type": data.type,
-          "timestamp": FieldValue.serverTimestamp(),
+          "timestamp": timestamp,
           "user": UserCollection.doc(uid),
           "attachments": data.attachments,
         }
@@ -44,7 +46,7 @@ export async function sendChannelMessage(
     await ChatCollection
       .doc(data.chatId)
       .update({
-        "lastModified": FieldValue.serverTimestamp(),
+        "lastModified": timestamp,
       });
     setAllMessagesAsRead(data.chatId, uid);
     sendPushNotifications(data.chatId, uid, data.content, data.messageId);
@@ -57,6 +59,7 @@ export async function sendThreadMessage(
   data: ChatMessage, uid: string,
 ) {
   try {
+    const timestamp = Timestamp.now();
     await ChatCollection.doc(data.chatId)
       .collection("messages")
       .doc(data.messageId).update(
@@ -64,7 +67,7 @@ export async function sendThreadMessage(
           "threadMessages": FieldValue.arrayUnion({
             "content": data.content,
             "type": data.type,
-            "timestamp": FieldValue.serverTimestamp(),
+            "timestamp": timestamp,
             "user": UserCollection.doc(uid),
             "attachments": data.attachments,
           }),
@@ -153,11 +156,15 @@ export async function addMemberToChat(chatId: string, user: User) {
 }
 
 export async function removeMemberFromChat(chatId: string, userId: string) {
-  await ChatCollection.doc(chatId).update({
-    members: FieldValue.arrayRemove(UserCollection.doc(userId)),
-  });
+  const chatRef = ChatCollection.doc(chatId);
+
+  await chatRef
+    .collection("members")
+    .doc(userId)
+    .delete();
+
   await UserCollection.doc(userId).update({
-    channels: FieldValue.arrayRemove(ChatCollection.doc(chatId)),
+    channels: FieldValue.arrayRemove(chatRef),
   });
   return;
 }
