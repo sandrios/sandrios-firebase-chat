@@ -216,15 +216,15 @@ export async function sendPushNotifications(chatId: string, userId: string, cont
   const chatChannel = await ChatCollection.doc(chatId).get();
   const members = await ChatCollection.doc(chatId).collection("members").get();
 
-  for (const memberref of members.docs) {
+  for (const memberDoc of members.docs) {
     try {
       await sendNotificationToUser(
         {
-          toUser: memberref.ref.id,
+          toUser: memberDoc.data()?.user.id,
           title: `${fromUser.data()?.displayName} has sent a message on ${chatChannel.data()?.name}`,
           content: content,
           tag: messageId,
-          badgeCount: await getBadgeCount(memberref.ref.id),
+          badgeCount: await getBadgeCount(memberDoc.ref.id),
           collapseKey: chatId,
           data: {
             "userId": userId,
