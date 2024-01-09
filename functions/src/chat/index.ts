@@ -37,6 +37,7 @@ export async function sendChannelMessage(
       .doc(data.messageId).set(
         {
           "content": data.content,
+          "rawText": data.rawText,
           "type": data.type,
           "timestamp": timestamp,
           "user": UserCollection.doc(uid),
@@ -49,7 +50,7 @@ export async function sendChannelMessage(
         "lastModified": timestamp,
       });
     setAllMessagesAsRead(data.chatId, uid);
-    sendPushNotifications(data.chatId, uid, data.content, data.messageId);
+    sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
   } catch (e) {
     console.log(e);
   }
@@ -66,6 +67,7 @@ export async function sendThreadMessage(
         {
           "threadMessages": FieldValue.arrayUnion({
             "content": data.content,
+            "rawText": data.rawText,
             "type": data.type,
             "timestamp": timestamp,
             "user": UserCollection.doc(uid),
@@ -75,7 +77,7 @@ export async function sendThreadMessage(
       );
 
     setAllMessagesAsRead(data.chatId, uid);
-    sendPushNotifications(data.chatId, uid, data.content, data.messageId);
+    sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
   } catch (e) {
     console.log(e);
   }
@@ -211,6 +213,7 @@ export async function updateMemberDocument(chatId: string, userId: string, docum
     await memberSnap.update(document);
   }
 }
+
 export async function sendPushNotifications(chatId: string, userId: string, content: string, messageId: string) {
   const fromUser = await UserCollection.doc(userId).get();
   const chatChannel = await ChatCollection.doc(chatId).get();

@@ -5,6 +5,7 @@ export interface ChatMessage {
     chatId: string
     messageId: string
     content: string
+    rawText: string
     type: string
     timestamp: FieldValue
     user: DocumentReference
