@@ -25,6 +25,31 @@ import {
   sendNotificationToUser,
 } from "../notification";
 
+export async function addToDefaultChannels(
+  uid: string,
+) {
+  try {
+    await setupDefaultChannel("general", uid);
+    await setupDefaultChannel("game-on", uid);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function setupDefaultChannel(channelName: string, userId: string) {
+  const channelQuery = await ChatCollection.where("name", "==", channelName).limit(1).get();
+  if (channelQuery.empty) {
+    await createChannel({
+      name: channelName,
+      private: false,
+      type: "group",
+      users: [{uid: userId}],
+    });
+  } else {
+    await addMemberToChat(channelQuery.docs[0].id, {uid: userId});
+  }
+}
+
 export async function sendChannelMessage(
   data: ChatMessage,
   uid: string,
