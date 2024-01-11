@@ -164,6 +164,11 @@ export async function addMemberToChat(chatId: string, user: User) {
   const chatRef = ChatCollection.doc(chatId);
   const userRef = UserCollection.doc(user.uid);
 
+  const memberDoc = await chatRef
+    .collection("members")
+    .doc(user.uid).get();
+
+  if (memberDoc.exists) return;
 
   // Add channel record to user document
   await userRef.update({
@@ -171,14 +176,12 @@ export async function addMemberToChat(chatId: string, user: User) {
   });
 
   // Add member to channel with latest lastSeen
-  await chatRef
-    .collection("members")
-    .doc(user.uid).set({
-      "user": userRef,
-      "lastSeen": FieldValue.serverTimestamp(),
-      "active": true,
-      "type": user.type,
-    });
+  await memberDoc.ref.set({
+    "user": userRef,
+    "lastSeen": FieldValue.serverTimestamp(),
+    "active": true,
+    "type": user.type,
+  });
   return;
 }
 
