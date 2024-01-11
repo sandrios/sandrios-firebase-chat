@@ -21,7 +21,6 @@ import {
 import {
   addMemberToChat,
   addMembersToChat,
-  addToDefaultChannels,
   createChannel,
   deactivateChannel,
   editUser,
@@ -31,6 +30,7 @@ import {
   sendThreadMessage,
   setAllMessagesAsRead,
   setTyping,
+  setupUser,
 } from "./chat";
 
 import {
@@ -39,22 +39,7 @@ import {
   sendNotificationToUser,
 } from "./notification";
 
-/**
- *  Setup user for default Channels
- *  Can only be accessed by only authorized Firebase UserCollection.
- */
-exports.setupUser = onCall(async (request) => {
-  console.log(request);
-  validateUser(request.auth);
-  try {
-    if (request.auth?.uid) {
-      await addToDefaultChannels(request.auth.uid);
-    }
-  } catch (e) {
-    console.log(e);
-  }
-  return;
-});
+exports.setupUser = setupUser;
 
 /**
  *  Create a new Chat Channel

@@ -24,6 +24,7 @@ import {
 import {
   sendNotificationToUser,
 } from "../notification";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
 
 export async function addToDefaultChannels(
   uid: string,
@@ -35,6 +36,17 @@ export async function addToDefaultChannels(
     console.log(e);
   }
 }
+
+/**
+ *  Invoke on new user document creation
+ */
+export const setupUser = onDocumentCreated("user/{userId}", async (event) => {
+  try {
+    await addToDefaultChannels(event.params.userId);
+  } catch (e) {
+    console.log(e);
+  }
+});
 
 async function setupDefaultChannel(channelName: string, userId: string) {
   const channelQuery = await ChatCollection.where("name", "==", channelName).limit(1).get();
