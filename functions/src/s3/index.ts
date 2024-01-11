@@ -29,7 +29,6 @@ export const getS3SignedUrlUpload = onCall(async (request) => {
       command,
       {expiresIn: 3600},
     );
-    console.log(response);
     return response;
   } catch (err) {
     console.error(err);
@@ -44,8 +43,7 @@ export const deleteS3Object = onCall(async (request) => {
   });
 
   try {
-    const response = await getS3Client().send(command);
-    console.log(response);
+    await getS3Client().send(command);
   } catch (err) {
     console.error(err);
   }

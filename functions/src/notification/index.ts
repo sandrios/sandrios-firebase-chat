@@ -69,7 +69,6 @@ export async function sendNotificationToUser({
     notification: {
       title: title,
       body: content,
-      // tag: tag,
     },
     android: {
       collapseKey: collapseKey,
@@ -86,7 +85,11 @@ export async function sendNotificationToUser({
       },
     },
     webpush: {
-      notification: { },
+      notification: {
+        title: title,
+        body: content,
+        data: data,
+      },
     },
     data: data,
     tokens: user.data()?.tokens ?? [],
