@@ -114,6 +114,7 @@ export async function sendThreadMessage(
             "timestamp": timestamp,
             "user": UserCollection.doc(uid),
             "attachments": data.attachments,
+            "directThreadMessage": data.directThreadMessage,
           }),
         }
       );

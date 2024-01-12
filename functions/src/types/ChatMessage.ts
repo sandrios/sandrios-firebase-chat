@@ -10,4 +10,5 @@ export interface ChatMessage {
     timestamp: FieldValue
     user: DocumentReference
     attachments?: MessageAttachment[]
+    directThreadMessage: boolean
 }
