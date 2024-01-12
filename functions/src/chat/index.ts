@@ -35,6 +35,7 @@ export async function addToDefaultChannels(
   } catch (e) {
     console.log(e);
   }
+  return;
 }
 
 /**
@@ -46,20 +47,23 @@ export const setupUser = onDocumentCreated("user/{userId}", async (event) => {
   } catch (e) {
     console.log(e);
   }
+  return;
 });
 
 async function setupDefaultChannel(channelName: string, userId: string) {
   const channelQuery = await ChatCollection.where("name", "==", channelName).limit(1).get();
+  const user = {uid: userId, tokens: []};
   if (channelQuery.empty) {
     await createChannel({
       name: channelName,
       private: false,
       type: "group",
-      users: [{uid: userId}],
+      users: [user],
     });
   } else {
-    await addMemberToChat(channelQuery.docs[0].id, {uid: userId});
+    await addMemberToChat(channelQuery.docs[0].id, user);
   }
+  return;
 }
 
 export async function sendChannelMessage(
@@ -86,11 +90,12 @@ export async function sendChannelMessage(
       .update({
         "lastModified": timestamp,
       });
-    setAllMessagesAsRead(data.chatId, uid);
-    sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
+    await setAllMessagesAsRead(data.chatId, uid);
+    await sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
   } catch (e) {
     console.log(e);
   }
+  return;
 }
 
 export async function sendThreadMessage(
@@ -113,11 +118,12 @@ export async function sendThreadMessage(
         }
       );
 
-    setAllMessagesAsRead(data.chatId, uid);
-    sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
+    await setAllMessagesAsRead(data.chatId, uid);
+    await sendPushNotifications(data.chatId, uid, data.rawText, data.messageId);
   } catch (e) {
     console.log(e);
   }
+  return;
 }
 
 export async function editUser(data: { uuid: string; displayName: string; }, uid: string) {
@@ -133,8 +139,10 @@ export async function editUser(data: { uuid: string; displayName: string; }, uid
       "uid": uid,
       "type": "user",
       "createdOn": FieldValue.serverTimestamp(),
+      "tokens": [],
     });
   }
+  return;
 }
 
 export async function createChannel(data: { name: string; type: string; private: boolean; users: User[]; }): Promise<string> {
@@ -170,6 +178,7 @@ export async function addMembersToChat(chatId: string, users: User[]) {
   for (let i = 0; i < users.length; i++) {
     await addMemberToChat(chatId, users[i]);
   }
+  return;
 }
 
 export async function addMemberToChat(chatId: string, user: User) {
@@ -215,22 +224,25 @@ export async function getBadgeCount(userId: string) {
   let totalCount = 0;
   const user = await UserCollection.doc(userId).get();
   for (const channelRef of user.data()?.channels ?? []) {
-    /* eslint-disable */
-          try {
-              const memberRef = channelRef.collection("members").doc(user.id) as DocumentReference<Member>;
-              const member = await memberRef.get();
-            
-              var messageCountRef = channelRef
-              .collection("messages")
-              .orderBy('timestamp', 'desc')
-              .where('timestamp',">",member.data()!.lastSeen)
-              .count()
-           
-              const messageCount = await messageCountRef.get()
-              totalCount = totalCount + messageCount.data().count
-          } catch (e) {
-              console.log(e)
-          }
+    try {
+      const memberRef = channelRef.collection("members").doc(user.id) as DocumentReference<Member>;
+      const member = await memberRef.get();
+
+      let messageCountRef = channelRef
+        .collection("messages")
+        .orderBy("timestamp", "desc");
+
+      if (member.data()?.lastSeen != null) {
+        messageCountRef = messageCountRef.where(
+          "timestamp", ">", member.data()?.lastSeen,
+        );
+      }
+
+      const messageCount = await messageCountRef.count().get();
+      totalCount = totalCount + messageCount.data().count;
+    } catch (e) {
+      console.log(e);
+    }
   }
   return totalCount;
 }
@@ -239,12 +251,14 @@ export async function setAllMessagesAsRead(chatId: string, userId: string) {
   await updateMemberDocument(chatId, userId, {
     "lastSeen": FieldValue.serverTimestamp(),
   });
+  return;
 }
 
 export async function setTyping(chatId: string, userId: string) {
   await updateMemberDocument(chatId, userId, {
     "lastType": FieldValue.serverTimestamp(),
   });
+  return;
 }
 
 export async function updateMemberDocument(chatId: string, userId: string, document: { [x: string]: FieldValue | DocumentReference; }) {
@@ -252,6 +266,7 @@ export async function updateMemberDocument(chatId: string, userId: string, docum
   if ((await memberSnap.get()).exists) {
     await memberSnap.update(document);
   }
+  return;
 }
 
 export async function sendPushNotifications(chatId: string, userId: string, content: string, messageId: string) {
@@ -261,6 +276,7 @@ export async function sendPushNotifications(chatId: string, userId: string, cont
 
   for (const memberDoc of members.docs) {
     try {
+      console.log(fromUser.data());
       await sendNotificationToUser(
         {
           toUser: memberDoc.data()?.user.id,
@@ -280,4 +296,5 @@ export async function sendPushNotifications(chatId: string, userId: string, cont
       console.log(e);
     }
   }
+  return;
 }

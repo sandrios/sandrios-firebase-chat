@@ -2,7 +2,7 @@ import {FieldValue} from "firebase-admin/firestore";
 
 import {
   DataMessagePayload,
-  MulticastMessage,
+  Message,
   getMessaging,
 } from "firebase-admin/messaging";
 
@@ -14,7 +14,11 @@ import {
   UserCollection,
 } from "../constants";
 
-export async function registerUser(data: { token: string; displayName: string; }, uid: string) {
+import {
+  DeviceToken,
+} from "../types/DeviceToken";
+
+export async function registerUser(data: { token: DeviceToken; displayName: string; }, uid: string) {
   try {
     const userRef = UserCollection.doc(uid);
     const userDoc = await userRef.get();
@@ -24,6 +28,7 @@ export async function registerUser(data: { token: string; displayName: string; }
         "uid": uid,
         "type": "user",
         "createdOn": FieldValue.serverTimestamp(),
+        "tokens": [],
       });
     }
     await registerToken(userRef, data.token);
@@ -38,7 +43,7 @@ export async function registerUser(data: { token: string; displayName: string; }
 }
 
 
-export async function registerToken(userRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>, token: string) {
+export async function registerToken(userRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>, token: DeviceToken) {
   const users = await UserCollection.where("tokens", "array-contains", token).get();
   for (const user of users.docs) {
     await unregisterToken(user.id, token);
@@ -48,7 +53,7 @@ export async function registerToken(userRef: FirebaseFirestore.DocumentReference
   });
 }
 
-export async function unregisterToken(uid: string, token: string) {
+export async function unregisterToken(uid: string, token: DeviceToken) {
   const userRef = UserCollection.doc(uid);
   await userRef.update({
     tokens: FieldValue.arrayRemove(token),
@@ -65,36 +70,51 @@ export async function sendNotificationToUser({
   collapseKey,
 }: TSNotification) {
   const user = await UserCollection.doc(toUser).get();
-  const message: MulticastMessage = {
-    notification: {
-      title: title,
-      body: content,
-    },
-    android: {
-      collapseKey: collapseKey,
-      notification: {
-        tag: tag,
-      },
-    },
-    apns: {
-      payload: {
-        aps: {
-          threadId: collapseKey,
-          badge: badgeCount,
+  const userDoc = user.data();
+  if (userDoc != null && userDoc.tokens != null) {
+    for (const token of userDoc.tokens) {
+      console.log(data);
+      const message: Message = {
+        notification: {
+          title: title,
+          body: content,
         },
-      },
-    },
-    webpush: {
-      notification: {
-        title: title,
-        body: content,
-        data: data,
-      },
-    },
-    data: data,
-    tokens: user.data()?.tokens ?? [],
-  };
-  await getMessaging().sendEachForMulticast(message);
+        android: {
+          collapseKey: collapseKey,
+          notification: {
+            title: title,
+            body: content,
+            tag: tag,
+            channelId: collapseKey,
+          },
+          data: data,
+        },
+        apns: {
+          payload: {
+            aps: {
+              badge: badgeCount,
+              threadId: collapseKey,
+              alert: {
+                title: title,
+                body: content,
+              },
+              data: data,
+            },
+          },
+        },
+        webpush: {
+          notification: {
+            title: title,
+            body: content,
+          },
+          data: data,
+        },
+        token: token.token,
+      };
+      const response = await getMessaging().send(message);
+      console.log(response);
+    }
+  }
 }
 
 interface TSNotification {

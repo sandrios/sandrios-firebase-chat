@@ -296,6 +296,7 @@ exports.sendNotificationToUser = onCall(async (request) => {
       data: request.data.data,
     }
   );
+  return;
 });
 
 
