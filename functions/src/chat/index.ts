@@ -276,22 +276,23 @@ export async function sendPushNotifications(chatId: string, userId: string, cont
 
   for (const memberDoc of members.docs) {
     try {
-      console.log(fromUser.data());
-      await sendNotificationToUser(
-        {
-          toUser: memberDoc.data()?.user.id,
-          title: `${fromUser.data()?.displayName} has sent a message on ${chatChannel.data()?.name}`,
-          content: content,
-          tag: messageId,
-          badgeCount: await getBadgeCount(memberDoc.ref.id),
-          collapseKey: chatId,
-          data: {
-            "userId": userId,
-            "chatId": chatId,
-            "type": "chat",
-          },
-        }
-      );
+      if (userId != memberDoc.id) {
+        await sendNotificationToUser(
+          {
+            toUser: memberDoc.id,
+            title: `${fromUser.data()?.displayName} has sent a message on ${chatChannel.data()?.name}`,
+            content: content,
+            tag: messageId,
+            badgeCount: await getBadgeCount(memberDoc.ref.id),
+            collapseKey: chatId,
+            data: {
+              "userId": userId,
+              "chatId": chatId,
+              "type": "chat",
+            },
+          }
+        );
+      }
     } catch (e) {
       console.log(e);
     }
