@@ -3,7 +3,6 @@ import {
   FieldValue,
 } from "firebase-admin/firestore";
 
-
 export interface Channel {
     name: string
     type: string

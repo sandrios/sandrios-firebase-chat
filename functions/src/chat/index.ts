@@ -83,6 +83,7 @@ export async function sendChannelMessage(
           "timestamp": timestamp,
           "user": UserCollection.doc(uid),
           "attachments": data.attachments,
+          "mentions": data.mentions,
         }
       );
     await ChatCollection
@@ -114,6 +115,7 @@ export async function sendThreadMessage(
             "timestamp": timestamp,
             "user": UserCollection.doc(uid),
             "attachments": data.attachments,
+            "mentions": data.mentions,
           }),
         }
       );

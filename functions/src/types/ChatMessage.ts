@@ -1,5 +1,6 @@
 import {DocumentReference, FieldValue} from "firebase-admin/firestore";
 import {MessageAttachment} from "./MessageAttachment";
+import {MessageMention} from "./MessageMention";
 
 export interface ChatMessage {
     chatId: string
@@ -10,4 +11,5 @@ export interface ChatMessage {
     timestamp: FieldValue
     user: DocumentReference
     attachments?: MessageAttachment[]
+    mentions?: MessageMention[]
 }
