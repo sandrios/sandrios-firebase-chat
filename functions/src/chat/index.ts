@@ -99,6 +99,23 @@ export async function sendChannelMessage(
   return;
 }
 
+export async function deleteChannelMessage(
+  data: {
+    chatId: string;
+    messageId: string;
+  },
+) {
+  try {
+    await ChatCollection
+      .doc(data.chatId)
+      .collection("messages")
+      .doc(data.messageId).delete();
+  } catch (e) {
+    console.log(e);
+  }
+  return;
+}
+
 export async function sendThreadMessage(
   data: ChatMessage, uid: string,
 ) {

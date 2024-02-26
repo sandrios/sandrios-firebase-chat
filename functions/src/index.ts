@@ -23,6 +23,7 @@ import {
   addMembersToChat,
   createChannel,
   deactivateChannel,
+  deleteChannelMessage,
   editUser,
   removeMemberFromChat,
   renameChannel,
@@ -207,6 +208,23 @@ exports.sendMessage = onCall(async (request) => {
   validateUser(request.auth);
   try {
     await sendChannelMessage(request.data, request.auth?.uid as string);
+  } catch (e) {
+    console.log(e);
+  }
+  return;
+});
+
+/**
+ *  Delete Message
+ *  Can only be accessed by only authorized Firebase UserCollection.
+ *
+ *  @param {string} chatId ID of the chat channel
+ *  @param {string} messageId ID of message document (For local storage)
+ */
+exports.deleteMessage = onCall(async (request) => {
+  validateUser(request.auth);
+  try {
+    await deleteChannelMessage(request.data);
   } catch (e) {
     console.log(e);
   }
